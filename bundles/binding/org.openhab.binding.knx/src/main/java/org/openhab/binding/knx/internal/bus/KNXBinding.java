@@ -45,6 +45,7 @@ import org.openhab.binding.knx.internal.connection.KNXConnection;
 import org.openhab.core.autoupdate.AutoUpdateBindingProvider;
 import org.openhab.core.binding.AbstractBinding;
 import org.openhab.core.binding.BindingProvider;
+import org.openhab.core.library.types.RefreshCommand;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.openhab.core.types.Type;
@@ -161,8 +162,15 @@ public class KNXBinding extends AbstractBinding<KNXBindingProvider>
 			if (pc != null) {
 				for (Datapoint datapoint : datapoints) {
 					try {
-						pc.write(datapoint, toDPTValue(value, datapoint.getDPT()));
-						logger.debug("Wrote value '{}' to datapoint '{}'", value, datapoint);
+						if(value.getClass().equals(RefreshCommand.class)) {
+							// a RefreshCommand has to be converted to a read on KNX
+							logger.debug("Sending read request to KNX for item {}", datapoint.getName());
+							pc.read(datapoint);
+						}
+						else {
+							pc.write(datapoint, toDPTValue(value, datapoint.getDPT()));
+							logger.debug("Wrote value '{}' to datapoint '{}'", value, datapoint);
+						}
 					} catch (KNXException e) {
 						logger.warn("Value '{}' could not be sent to the KNX bus using datapoint '{}' - retrying one time: {}",
 								new Object[]{value, datapoint, e.getMessage()});

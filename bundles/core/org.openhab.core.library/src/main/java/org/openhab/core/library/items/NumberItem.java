@@ -33,6 +33,7 @@ import java.util.List;
 
 import org.openhab.core.items.GenericItem;
 import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.RefreshCommand;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.openhab.core.types.UnDefType;
@@ -51,16 +52,24 @@ public class NumberItem extends GenericItem {
 	
 	private static List<Class<? extends State>> acceptedDataTypes = new ArrayList<Class<? extends State>>();
 	private static List<Class<? extends Command>> acceptedCommandTypes = new ArrayList<Class<? extends Command>>();
+	private static List<Class<? extends Command>> acceptedCommandTypesRel = new ArrayList<Class<? extends Command>>();
 
 	static {
 		acceptedDataTypes.add(DecimalType.class);
 		acceptedDataTypes.add(UnDefType.class);
 
 		acceptedCommandTypes.add(DecimalType.class);
+
+		acceptedCommandTypesRel.add(RefreshCommand.class);
+		acceptedCommandTypesRel.add(DecimalType.class);
 	}
 	
 	public NumberItem(String name) {
-		super(name);
+		this(name, true);
+	}
+
+	public NumberItem(String name, boolean reloadable) {
+		super(name, reloadable);
 	}
 
 	public List<Class<? extends State>> getAcceptedDataTypes() {
@@ -68,6 +77,11 @@ public class NumberItem extends GenericItem {
 	}
 
 	public List<Class<? extends Command>> getAcceptedCommandTypes() {
-		return acceptedCommandTypes;
+		if(reloadable) {
+			return acceptedCommandTypesRel;
+		}
+		else {
+			return acceptedCommandTypes;			
+		}
 	}
 }

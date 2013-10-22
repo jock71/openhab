@@ -33,6 +33,7 @@ import java.util.List;
 
 import org.openhab.core.items.GenericItem;
 import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.RefreshCommand;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
@@ -57,6 +58,7 @@ public class StringItem extends GenericItem {
 		acceptedDataTypes.add((DateTimeType.class));
 		acceptedDataTypes.add(UnDefType.class);
 
+		acceptedCommandTypes.add(RefreshCommand.class); // test only. DO NOT commit
 		acceptedCommandTypes.add(StringType.class);
 	}
 	

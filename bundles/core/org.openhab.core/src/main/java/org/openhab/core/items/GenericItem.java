@@ -60,9 +60,16 @@ abstract public class GenericItem implements Item {
 	final protected String name;
 	
 	protected State state = UnDefType.NULL;
+	protected boolean reloadable = false;
+	
 	
 	public GenericItem(String name) {
+		this(name, false);
+	}
+
+	public GenericItem(String name, boolean reloadable) {
 		this.name = name;
+		this.reloadable = reloadable;
 	}
 
 	/**

@@ -185,7 +185,7 @@ public class GenericItemProvider implements ItemProvider, ModelRepositoryChangeL
 		if (modelItem instanceof ModelGroupItem) {
 			ModelGroupItem modelGroupItem = (ModelGroupItem) modelItem;
 			String baseItemType = modelGroupItem.getType();
-			GenericItem baseItem = createItemOfType(baseItemType, modelGroupItem.getName());
+			GenericItem baseItem = createItemOfType(baseItemType, modelGroupItem.getName(), false);
 			if (baseItem != null) {
 				ModelGroupFunction function = modelGroupItem.getFunction();
 				if (function == null) {
@@ -199,11 +199,21 @@ public class GenericItemProvider implements ItemProvider, ModelRepositoryChangeL
 		} else {
 			ModelNormalItem normalItem = (ModelNormalItem) modelItem;
 			String itemName = normalItem.getName();
-			item = createItemOfType(normalItem.getType(), itemName);
+			boolean reloadStateSupported = isReloadSupported(normalItem);
+			item = createItemOfType(normalItem.getType(), itemName, reloadStateSupported);
 		}
 		return item;
 	}
 	
+	private boolean isReloadSupported(ModelNormalItem normalItem) {
+		for(ModelBinding binding: normalItem.getBindings()) {
+			if(binding.getType().equals("reloadable"))
+				return true;
+		}
+		return false;
+	}
+
+
 	private GroupItem applyGroupFunction(GenericItem baseItem, ModelGroupItem modelGroupItem, ModelGroupFunction function) {
 		List<State> args = new ArrayList<State>();
 		for (String arg : modelGroupItem.getArgs()) {
@@ -363,10 +373,11 @@ public class GenericItemProvider implements ItemProvider, ModelRepositoryChangeL
 	 *  
 	 * @param itemType The type to find the appropriate {@link ItemFactory} for.
 	 * @param itemName The name of the {@link Item} to create.
+	 * @param reloadable true if the item state can be explicitly reloaded
 	 * 
 	 * @return An Item instance of type {@code itemType}. 
 	 */
-	private GenericItem createItemOfType(String itemType, String itemName) {
+	private GenericItem createItemOfType(String itemType, String itemName, boolean reloadable) {
 		if (itemType == null) {
 			return null;
 		}

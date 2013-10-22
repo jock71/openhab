@@ -49,7 +49,7 @@ public interface Item {
 	 * @return the current state
 	 */
 	public State getState();
-
+	
 	/**
 	 * returns the current state of the item as a specific type
 	 * 

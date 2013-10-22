@@ -54,15 +54,17 @@ public class CoreItemFactory implements ItemFactory {
 	 * @{inheritDoc}
 	 */
 	public GenericItem createItem(String itemTypeName, String itemName) {
-		if (itemTypeName.equals(ITEM_TYPES[0])) return new SwitchItem(itemName);
-		if (itemTypeName.equals(ITEM_TYPES[1])) return new RollershutterItem(itemName);
-		if (itemTypeName.equals(ITEM_TYPES[2])) return new ContactItem(itemName);
-		if (itemTypeName.equals(ITEM_TYPES[3])) return new StringItem(itemName);
-		if (itemTypeName.equals(ITEM_TYPES[4])) return new NumberItem(itemName);
-		if (itemTypeName.equals(ITEM_TYPES[5])) return new DimmerItem(itemName);
-		if (itemTypeName.equals(ITEM_TYPES[6])) return new DateTimeItem(itemName);
-		if (itemTypeName.equals(ITEM_TYPES[7])) return new ColorItem(itemName);
-		else return null;
+		GenericItem item;
+		if (itemTypeName.equals(ITEM_TYPES[0])) item = new SwitchItem(itemName);
+		else if (itemTypeName.equals(ITEM_TYPES[1])) item = new RollershutterItem(itemName);
+		else if (itemTypeName.equals(ITEM_TYPES[2])) item = new ContactItem(itemName);
+		else if (itemTypeName.equals(ITEM_TYPES[3])) item = new StringItem(itemName);
+		else if (itemTypeName.equals(ITEM_TYPES[4])) item = new NumberItem(itemName);
+		else if (itemTypeName.equals(ITEM_TYPES[5])) item = new DimmerItem(itemName);
+		else if (itemTypeName.equals(ITEM_TYPES[6])) item = new DateTimeItem(itemName);
+		else if (itemTypeName.equals(ITEM_TYPES[7])) item = new ColorItem(itemName);
+		else item = null;
+		return item;
 	}
 	
 	/**

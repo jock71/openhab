@@ -35,6 +35,7 @@ import org.openhab.core.items.GenericItem;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.RefreshCommand;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.openhab.core.types.UnDefType;
@@ -51,16 +52,24 @@ public class SwitchItem extends GenericItem {
 	
 	private static List<Class<? extends State>> acceptedDataTypes = new ArrayList<Class<? extends State>>();
 	private static List<Class<? extends Command>> acceptedCommandTypes = new ArrayList<Class<? extends Command>>();
-
+	private static List<Class<? extends Command>> acceptedCommandTypesRel = new ArrayList<Class<? extends Command>>();
+	
 	static {
 		acceptedDataTypes.add(OnOffType.class);
 		acceptedDataTypes.add(UnDefType.class);
 
 		acceptedCommandTypes.add(OnOffType.class);
+
+		acceptedCommandTypesRel.add(RefreshCommand.class);
+		acceptedCommandTypesRel.add(OnOffType.class);
 	}
 	
 	public SwitchItem(String name) {
-		super(name);
+		this(name, false);
+	}
+	
+	public SwitchItem(String name, boolean reloadable) {
+		super(name, reloadable);
 	}
 
 	public void send(OnOffType command) {
@@ -72,7 +81,7 @@ public class SwitchItem extends GenericItem {
 	}
 
 	public List<Class<? extends Command>> getAcceptedCommandTypes() {
-		return acceptedCommandTypes;
+		return reloadable?acceptedCommandTypesRel:acceptedCommandTypes;
 	}
 	
 	@Override

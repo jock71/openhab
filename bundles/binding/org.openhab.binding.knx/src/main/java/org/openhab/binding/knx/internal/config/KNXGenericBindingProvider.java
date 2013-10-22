@@ -37,6 +37,7 @@ import org.openhab.binding.knx.internal.dpt.KNXCoreTypeMapper;
 import org.openhab.core.autoupdate.AutoUpdateBindingProvider;
 import org.openhab.core.binding.BindingConfig;
 import org.openhab.core.items.Item;
+import org.openhab.core.library.types.RefreshCommand;
 import org.openhab.core.types.Type;
 import org.openhab.model.item.binding.AbstractGenericBindingProvider;
 import org.openhab.model.item.binding.BindingConfigParseException;
@@ -167,23 +168,46 @@ public class KNXGenericBindingProvider extends AbstractGenericBindingProvider im
 			try {
 				Iterable<KNXBindingConfig> configList = Iterables.filter(Iterables.concat(bindingConfigs.values()), KNXBindingConfig.class);
 				Iterable<KNXBindingConfigItem> configItemList = Iterables.filter(Iterables.concat(configList), KNXBindingConfigItem.class);
-				Iterable<KNXBindingConfigItem> bindingConfigs = Iterables.filter(configItemList,
-						new Predicate<KNXBindingConfigItem>() {
-							public boolean apply(KNXBindingConfigItem input) {
-								if(input==null) {
-									return false;
+				Iterable<KNXBindingConfigItem> bindingConfigs;
+				Iterable<Datapoint> datapoints;
+				if(typeClass.equals(RefreshCommand.class)) {
+					// search items with readable datapoint
+					bindingConfigs = Iterables.filter(configItemList,
+							new Predicate<KNXBindingConfigItem>() {
+								public boolean apply(KNXBindingConfigItem input) {
+									if(input==null) {
+										return false;
+									}
+									return input.itemName.equals(itemName) &&
+											input.readableDataPoint != null;
 								}
-								return input.itemName.equals(itemName)
-										&& KNXCoreTypeMapper.toTypeClass(input.mainDataPoint.getDPT()).equals(typeClass);
-							}
-						});
-				
-				Iterable<Datapoint> datapoints = Iterables.transform(bindingConfigs,
-					new Function<KNXBindingConfigItem, Datapoint>() {
-						public Datapoint apply(KNXBindingConfigItem configItem) {
-							return configItem.mainDataPoint;
-						}
+						
 					});
+					datapoints = Iterables.transform(bindingConfigs,
+							new Function<KNXBindingConfigItem, Datapoint>() {
+								public Datapoint apply(KNXBindingConfigItem configItem) {
+									return configItem.readableDataPoint;
+								}
+							});
+				}
+				else {
+					bindingConfigs = Iterables.filter(configItemList,
+							new Predicate<KNXBindingConfigItem>() {
+								public boolean apply(KNXBindingConfigItem input) {
+									if(input==null) {
+										return false;
+									}
+									return input.itemName.equals(itemName)
+											&& KNXCoreTypeMapper.toTypeClass(input.mainDataPoint.getDPT()).equals(typeClass);
+								}
+							});
+					datapoints = Iterables.transform(bindingConfigs,
+							new Function<KNXBindingConfigItem, Datapoint>() {
+								public Datapoint apply(KNXBindingConfigItem configItem) {
+									return configItem.mainDataPoint;
+								}
+							});
+				}
 				
 				return Lists.newArrayList(datapoints);
 			}
