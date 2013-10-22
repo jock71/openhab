@@ -31,15 +31,17 @@ package org.openhab.binding.xbmc.internal;
 import java.util.Dictionary;
 
 import org.openhab.binding.xbmc.XbmcBindingProvider;
+import org.openhab.binding.xbmc.internal.Xbmc.GUI;
 
 import org.apache.commons.lang.StringUtils;
-import org.openhab.core.binding.AbstractActiveBinding;
+import org.openhab.core.binding.AbstractBinding;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 	
 
 /**
@@ -49,23 +51,16 @@ import org.slf4j.LoggerFactory;
  * @author Andrea Giacosi
  * @since 1.3.0
  */
-public class XbmcBinding extends AbstractActiveBinding<XbmcBindingProvider> implements ManagedService {
+public class XbmcBinding extends AbstractBinding<XbmcBindingProvider> implements ManagedService {
 
 	private static final Logger logger = 
 		LoggerFactory.getLogger(XbmcBinding.class);
 
-	/**
-	 * Indicates whether this binding is properly configured which means all
-	 * necessary configurations are set. Only Bindings which are properly
-	 * configured get's started and will call the execute method though.
-	 */
-	private boolean isProperlyConfigured = false;
 
 	/** 
-	 * the refresh interval which is used to poll values from the xbmc
-	 * server (optional, defaults to 60000ms)
+	 * the ip address of the xbmc machine
 	 */
-	private long refreshInterval = 60000;
+	private String xbmcIp = "192.168.10.17";
 	
 	
 	public XbmcBinding() {
@@ -73,6 +68,7 @@ public class XbmcBinding extends AbstractActiveBinding<XbmcBindingProvider> impl
 		
 	
 	public void activate() {
+		super.activate();
 	}
 	
 	public void deactivate() {
@@ -81,32 +77,6 @@ public class XbmcBinding extends AbstractActiveBinding<XbmcBindingProvider> impl
 	}
 
 	
-	/**
-	 * @{inheritDoc}
-	 */
-	@Override
-	protected long getRefreshInterval() {
-		return refreshInterval;
-	}
-
-	/**
-	 * @{inheritDoc}
-	 */
-	@Override
-	protected String getName() {
-		return "xbmc Refresh Service";
-	}
-
-	
-	
-	/**
-	 * @{inheritDoc}
-	 */
-	@Override
-	protected void execute() {
-		// the frequently executed code (polling) goes here ...
-		logger.debug("execute() method is called!");
-	}
 
 	/**
 	 * @{inheritDoc}
@@ -117,6 +87,7 @@ public class XbmcBinding extends AbstractActiveBinding<XbmcBindingProvider> impl
 		// event bus goes here. This method is only called if one of the 
 		// BindingProviders provide a binding for the given 'itemName'.
 		logger.debug("internalReceiveCommand() is called!");
+		
 	}
 	
 	/**
@@ -127,21 +98,42 @@ public class XbmcBinding extends AbstractActiveBinding<XbmcBindingProvider> impl
 		// the code being executed when a state was sent on the openHAB
 		// event bus goes here. This method is only called if one of the 
 		// BindingProviders provide a binding for the given 'itemName'.
-		logger.debug("internalReceiveCommand() is called!");
+		logger.debug("internalReceiveUpdate() is called!");
+		for(XbmcBindingProvider provider : providers) {
+			String method = provider.getMethodName(itemName);
+			Object[] params = provider.getParameters(itemName);
+			switch(provider.getSectionName(itemName)) {
+			case "GUI":
+				guiUpdate(method, params);
+				break;
+			case "system":
+				systemUpdate(method, params);
+				break;
+			default:
+				break;
+			}
+		}
 	}
 	
-	
-	/**
-	 * NOTE: REMOVE THIS OVERRIDDEN METHOD WHEN IMPLEMENTING YOUR OWN BINDING!
-	 * THIS IS ONLY DONE FOR DEMO PURPOSE!!
-	 */
-	@Override
-	protected boolean providesBindingFor(String itemName) {
-		// REMOVE THIS CODE WHEN IMPLEMENTIING YOUR OWN BINDING!
-		return true;
+
+
+
+	private void guiUpdate(String method, Object[] params) {
+		GUI gui = xbmc.gui();
+		switch(method) {
+		case "ShowNotification":
+			gui.showNotification("Ciao", "Ciao", 5000);
+			break;
+		default:
+		}
+		
 	}
-	
-	
+
+	private void systemUpdate(String method, Object[] params) {
+		// TODO Auto-generated method stub
+		
+	}
+
 	/**
 	 * @{inheritDoc}
 	 */
@@ -151,16 +143,20 @@ public class XbmcBinding extends AbstractActiveBinding<XbmcBindingProvider> impl
 			
 			// to override the default refresh interval one has to add a 
 			// parameter to openhab.cfg like <bindingName>:refresh=<intervalInMs>
-			String refreshIntervalString = (String) config.get("refresh");
-			if (StringUtils.isNotBlank(refreshIntervalString)) {
-				refreshInterval = Long.parseLong(refreshIntervalString);
+			String ip = (String) config.get("ip");
+			if (StringUtils.isNotBlank(xbmcIp)) {
+				xbmcIp = ip;
+			}
+			else {
+				// throw new ConfigurationException(property, reason);
 			}
 			
-			// read further config parameters here ...
-
-			isProperlyConfigured = true;
+			xbmc = new Xbmc(xbmcIp, 80);
+			
 		}
 	}
+	
+	private Xbmc xbmc;
 	
 
 }

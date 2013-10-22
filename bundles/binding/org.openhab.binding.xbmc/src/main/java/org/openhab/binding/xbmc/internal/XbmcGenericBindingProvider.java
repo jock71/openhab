@@ -28,12 +28,11 @@
  */
 package org.openhab.binding.xbmc.internal;
 
-import java.util.HashMap;
 
 import org.openhab.binding.xbmc.XbmcBindingProvider;
 import org.openhab.core.binding.BindingConfig;
 import org.openhab.core.items.Item;
-import org.openhab.core.library.items.DimmerItem;
+import org.openhab.core.library.items.StringItem;
 import org.openhab.core.library.items.SwitchItem;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.TypeParser;
@@ -49,11 +48,14 @@ import org.openhab.model.item.binding.BindingConfigParseException;
  */
 public class XbmcGenericBindingProvider extends AbstractGenericBindingProvider implements XbmcBindingProvider {
 
+	/** the binding type to register for as a binding config reader */
+	public static final String XBMC_BINDING_TYPE = "xbmc";
+	
 	/**
 	 * {@inheritDoc}
 	 */
 	public String getBindingType() {
-		return "xbmc";
+		return XBMC_BINDING_TYPE;
 	}
 
 	/**
@@ -63,7 +65,10 @@ public class XbmcGenericBindingProvider extends AbstractGenericBindingProvider i
 	public void validateItemType(Item item, String bindingConfig) throws BindingConfigParseException {
 		if(item instanceof SwitchItem) {
 			SwitchItem switchItem = (SwitchItem)item;
-		} 
+		}
+		else if(item instanceof StringItem) {
+			StringItem stringItem = (StringItem)item;
+		}
 		else {
 			throw new BindingConfigParseException("item '" + item.getName()
 				+ "' is of type '" + item.getClass().getSimpleName()
@@ -77,14 +82,55 @@ public class XbmcGenericBindingProvider extends AbstractGenericBindingProvider i
 	@Override
 	public void processBindingConfiguration(String context, Item item, String bindingConfig) throws BindingConfigParseException {
 		super.processBindingConfiguration(context, item, bindingConfig);
-		XbmcBindingConfig config = new XbmcBindingConfig();
-		
-		//parse bindingconfig here ...
-		
-		addBindingConfig(item, config);		
+		// parse bindingconfig here ...
+		// examples GUI.ShowNotification:title:5    show for 5 seconds item value with title "title"
+		//          Application.SetVolume:50        set volume to 50%
+		try {
+			String[] tokens = bindingConfig.split(":");
+			XbmcBindingConfigElement el = new XbmcBindingConfigElement();
+			String[] method = tokens[0].split("\\.");
+			el.sectionName = method[0];
+			el.methodName = method[1];
+			el.parameters = new Object[tokens.length-1];
+			for(int i=0; i<el.parameters.length; i++) {
+				el.parameters[i] = tokens[i+1];
+			}
+			addBindingConfig(item, el);
+		}
+		catch(Throwable t) {
+			throw new BindingConfigParseException("wrong binding config for xbmc binding:" + bindingConfig);
+		}
+
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getSectionName(String itemName) {
+		XbmcBindingConfigElement config = (XbmcBindingConfigElement) bindingConfigs.get(itemName);
+		return config != null ? config.sectionName : null;
+	}
 	
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getMethodName(String itemName) {
+		XbmcBindingConfigElement config = (XbmcBindingConfigElement) bindingConfigs.get(itemName);
+		return config != null ? config.methodName : null;
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public Object[] getParameters(String itemName) {
+		XbmcBindingConfigElement config = (XbmcBindingConfigElement) bindingConfigs.get(itemName);
+		return config != null ? config.parameters : null;
+	}
+
+
 	/**
 	 * Creates a {@link Command} out of the given <code>commandAsString</code>
 	 * incorporating the {@link TypeParser}.
@@ -111,15 +157,10 @@ public class XbmcGenericBindingProvider extends AbstractGenericBindingProvider i
 		
 		return command;
 	}
-
-	static class XbmcBindingConfig extends HashMap<Command, XbmcBindingConfigElement> implements BindingConfig {
-		
-		private static final long serialVersionUID = 363239955666272490L;
-		Class<? extends Item> itemType;
-	}
 	
 	static class XbmcBindingConfigElement implements BindingConfig {
 		
+		public String sectionName = null;
 		public String methodName = null;
 		public Object[] parameters = null;
 		
@@ -129,7 +170,6 @@ public class XbmcGenericBindingProvider extends AbstractGenericBindingProvider i
 		}
 		
 	}
-
 	
 	
 }

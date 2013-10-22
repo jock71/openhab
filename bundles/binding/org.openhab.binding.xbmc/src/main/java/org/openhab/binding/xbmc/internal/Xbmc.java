@@ -51,6 +51,17 @@ public class Xbmc {
 		private static final String RADIX = "System.";
 	}
 	
+	public class Application {
+		public int setVolume(int volume) {
+			SortedMap<String, String> params = new TreeMap<String, String>();
+			params.put("volume", ((Integer)volume).toString());
+
+			execute(RADIX + "SetVolume", params);
+			return volume;
+		}
+		private static final String RADIX = "Application.";
+	}
+	
 	protected Map<String, String> execute(String method, SortedMap<String, String> params) {
 		StringBuilder builder = new StringBuilder();
 		builder.append("\"params\":{");
@@ -58,15 +69,15 @@ public class Xbmc {
 		for(Entry<String,String> param:params.entrySet()) {
 			if(!isFirst) {
 				builder.append(",");
-				isFirst = false;
 			}
 			builder.append("\"");
 			builder.append(param.getKey());
 			builder.append("\":\"");
 			builder.append(param.getValue());
 			builder.append("\"");
+			isFirst = false;
 		}
-		builder.append("\"}");
+		builder.append("}");
 		
 		String content = "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"" + method + 
 				"\","+  builder.toString() + "}";

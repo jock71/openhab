@@ -35,5 +35,18 @@ import org.openhab.core.binding.BindingProvider;
  * @since 1.3.0
  */
 public interface XbmcBindingProvider extends BindingProvider {
+	/**
+	 * @return the corresponding section where the methods belongs
+	 */
+	public String getSectionName(String itemName);
+	/**
+	 * @return the corresponding method name of the given <code>itemName</code>
+	 */
+	public String getMethodName(String itemName);
 
+	/**
+	 * @return the corresponding parameters of the given <code>itemName</code>
+	 */
+	public Object[] getParameters(String itemName);
+	
 }
