@@ -36,6 +36,7 @@ import java.util.List;
 import org.openhab.core.items.GenericItem;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.RefreshCommand;
 import org.openhab.core.library.types.StopMoveType;
 import org.openhab.core.library.types.UpDownType;
 import org.openhab.core.types.Command;
@@ -53,6 +54,7 @@ public class RollershutterItem extends GenericItem {
 	
 	private static List<Class<? extends State>> acceptedDataTypes = new ArrayList<Class<? extends State>>();
 	private static List<Class<? extends Command>> acceptedCommandTypes = new ArrayList<Class<? extends Command>>();
+	private static List<Class<? extends Command>> acceptedCommandTypesRel = new ArrayList<Class<? extends Command>>();
 	
 	static {
 		acceptedDataTypes.add(UnDefType.class);
@@ -62,10 +64,19 @@ public class RollershutterItem extends GenericItem {
 		acceptedCommandTypes.add(UpDownType.class);
 		acceptedCommandTypes.add(StopMoveType.class);
 		acceptedCommandTypes.add(PercentType.class);
-	}
+
+		acceptedCommandTypesRel.add(UpDownType.class);
+		acceptedCommandTypesRel.add(StopMoveType.class);
+		acceptedCommandTypesRel.add(PercentType.class);
+		acceptedCommandTypesRel.add(RefreshCommand.class);
+}
 	
 	public RollershutterItem(String name) {
 		super(name);
+	}
+
+	public RollershutterItem(String name, boolean reloadable) {
+		super(name, reloadable);
 	}
 
 	public List<Class<? extends State>> getAcceptedDataTypes() {
@@ -73,7 +84,7 @@ public class RollershutterItem extends GenericItem {
 	}
 
 	public List<Class<? extends Command>> getAcceptedCommandTypes() {
-		return acceptedCommandTypes;
+		return reloadable?acceptedCommandTypesRel:acceptedCommandTypes;
 	}
 	
 	/**

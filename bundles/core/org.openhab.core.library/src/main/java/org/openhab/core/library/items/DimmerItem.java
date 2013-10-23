@@ -37,6 +37,7 @@ import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.IncreaseDecreaseType;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.RefreshCommand;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.openhab.core.types.UnDefType;
@@ -53,6 +54,7 @@ public class DimmerItem extends SwitchItem {
 
 	private static List<Class<? extends State>> acceptedDataTypes = new ArrayList<Class<? extends State>>();
 	private static List<Class<? extends Command>> acceptedCommandTypes = new ArrayList<Class<? extends Command>>();
+	private static List<Class<? extends Command>> acceptedCommandTypesRel = new ArrayList<Class<? extends Command>>();
 
 	static {
 		acceptedDataTypes.add(OnOffType.class);
@@ -62,10 +64,19 @@ public class DimmerItem extends SwitchItem {
 		acceptedCommandTypes.add(OnOffType.class);		
 		acceptedCommandTypes.add(IncreaseDecreaseType.class);
 		acceptedCommandTypes.add(PercentType.class);
-	}
+
+		acceptedCommandTypesRel.add(OnOffType.class);		
+		acceptedCommandTypesRel.add(IncreaseDecreaseType.class);
+		acceptedCommandTypesRel.add(PercentType.class);
+		acceptedCommandTypesRel.add(RefreshCommand.class);
+}
 	
 	public DimmerItem(String name) {
 		super(name);
+	}
+
+	public DimmerItem(String name, boolean reloadable) {
+		super(name, reloadable);
 	}
 
 	public void send(PercentType command) {
@@ -77,7 +88,7 @@ public class DimmerItem extends SwitchItem {
 	}
 
 	public List<Class<? extends Command>> getAcceptedCommandTypes() {
-		return acceptedCommandTypes;
+		return reloadable?acceptedCommandTypesRel:acceptedCommandTypes;
 	}
 
 	/**

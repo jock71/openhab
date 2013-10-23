@@ -58,7 +58,6 @@ public class StringItem extends GenericItem {
 		acceptedDataTypes.add((DateTimeType.class));
 		acceptedDataTypes.add(UnDefType.class);
 
-		acceptedCommandTypes.add(RefreshCommand.class); // test only. DO NOT commit
 		acceptedCommandTypes.add(StringType.class);
 	}
 	

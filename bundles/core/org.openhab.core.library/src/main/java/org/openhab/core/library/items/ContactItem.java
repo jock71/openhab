@@ -35,6 +35,7 @@ import org.openhab.core.items.GenericItem;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OpenClosedType;
 import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.RefreshCommand;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.openhab.core.types.UnDefType;
@@ -51,10 +52,13 @@ public class ContactItem extends GenericItem {
 	
 	private static List<Class<? extends State>> acceptedDataTypes = new ArrayList<Class<? extends State>>();
 	private static List<Class<? extends Command>> acceptedCommandTypes = new ArrayList<Class<? extends Command>>();
+	private static List<Class<? extends Command>> acceptedCommandTypesRel = new ArrayList<Class<? extends Command>>();
 	
 	static {
 		acceptedDataTypes.add(OpenClosedType.class);
 		acceptedDataTypes.add(UnDefType.class);
+		
+		acceptedCommandTypesRel.add(RefreshCommand.class);
 	}
 	
 	public ContactItem(String name) {
@@ -70,7 +74,7 @@ public class ContactItem extends GenericItem {
 	}
 
 	public List<Class<? extends Command>> getAcceptedCommandTypes() {
-		return acceptedCommandTypes;
+		return reloadable?acceptedCommandTypesRel:acceptedCommandTypes;
 	}
 
 	/**
