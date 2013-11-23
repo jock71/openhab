@@ -159,7 +159,6 @@ public class KNXConnection implements ManagedService {
 				return;
 			}
 
-
 			NetworkLinkListener linkListener = new NetworkLinkListener() {
 				public void linkClosed(CloseEvent e) {
 					// if the link is lost, we want to reconnect immediately
@@ -169,26 +168,7 @@ public class KNXConnection implements ManagedService {
 					}
 					if(!link.isOpen() && !shutdown) {
 						logger.error("KNX link has been lost!");
-						if(autoReconnectPeriod>0) {
-							logger.info("KNX link will be retried in " + autoReconnectPeriod + " seconds");
-							final Timer timer = new Timer();
-							TimerTask timerTask = new TimerTask() {
-								@Override
-								public void run() {
-									if(shutdown) {
-										timer.cancel();
-									}
-									else {
-										logger.info("Trying to reconnect to KNX...");
-										connect();
-										if(link.isOpen()) {
-											timer.cancel();
-										}
-									}
-								}
-							};
-							timer.schedule(timerTask, autoReconnectPeriod * 1000, autoReconnectPeriod * 1000);
-						}
+						scheduleReconnect();
 					}
 				}
 				
@@ -225,10 +205,9 @@ public class KNXConnection implements ManagedService {
 				}
 			}
 			
-		} catch (KNXException e) {
+		} catch (KNXException | UnknownHostException e) {
 			logger.error("Error connecting to KNX bus: {}", e.getMessage());
-		} catch (UnknownHostException e) {
-			logger.error("Error connecting to KNX bus: {}", e.getMessage());
+			scheduleReconnect();
 		}
 	}
 	
@@ -243,7 +222,9 @@ public class KNXConnection implements ManagedService {
 			if (link!=null) {
 				logger.info("Closing KNX connection");
 				link.close();
+				link = null;
 			}
+			pc = null;
 		}
 	}
 
@@ -291,6 +272,9 @@ public class KNXConnection implements ManagedService {
 	@SuppressWarnings("rawtypes")
 	public void updated(Dictionary config) throws ConfigurationException {
 		if (config != null) {
+			/* before changing any parameter disconnect from KNX */
+			if( !shutdown ) disconnect();
+			
 			ip = (String) config.get("ip");
 
 			String connectionTypeString = (String) config.get("type");
@@ -319,7 +303,6 @@ public class KNXConnection implements ManagedService {
 			}
 
 			localIp = (String) config.get("localIp");
-
 			serialPort = (String) config.get("serialPort");
 
 			String readingPauseString = (String) config.get("pause");
@@ -350,9 +333,8 @@ public class KNXConnection implements ManagedService {
 					autoReconnectPeriod = autoReconnectPeriodValue;
 				}
 			}
-
-			
-			if(pc==null) connect();
+			/* always re/connect with new parameters */ 
+			connect();
 		}
 	}
 
@@ -367,6 +349,22 @@ public class KNXConnection implements ManagedService {
 	public static int getAutoReconnectPeriod() {
 		return autoReconnectPeriod;
 	}
-	
-	
+
+	private static void scheduleReconnect() {
+		if(autoReconnectPeriod > 0) {
+			logger.info("KNX link will be retried in " + autoReconnectPeriod + " seconds");
+			Timer autoReconnectTimer = new Timer();
+			TimerTask timerTask = new TimerTask() {
+				@Override
+				public void run() {
+					if(!shutdown) {
+						logger.info("Trying to reconnect to KNX...");
+						connect();
+					}
+				}
+			};
+			autoReconnectTimer.schedule(timerTask, autoReconnectPeriod * 1000);
+		}
+	}
+		
 }
