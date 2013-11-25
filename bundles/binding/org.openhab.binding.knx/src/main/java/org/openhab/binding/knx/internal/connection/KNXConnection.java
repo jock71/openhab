@@ -163,12 +163,13 @@ public class KNXConnection implements ManagedService {
 				public void linkClosed(CloseEvent e) {
 					// if the link is lost, we want to reconnect immediately
 					if(!e.isUserRequest() && !shutdown) {
-						logger.warn("KNX link has been lost (reason: {} on object {}) - reconnecting...", e.getReason(), e.getSource().toString());
+						logger.warn("KNX link has been lost (reason: {} on object {}) - reconnecting...", 
+								e.getReason(), e.getSource().toString());
 						connect();
 					}
-					if(!link.isOpen() && !shutdown) {
-						logger.error("KNX link has been lost!");
-						scheduleReconnect();
+					if(!link.isOpen() && !shutdown && autoReconnectPeriod==0) {
+						// if autoReconnect != 0 it is not considered an error (it will re-established soon)
+						logger.error("KNX link has been lost!"); 
 					}
 				}
 				
