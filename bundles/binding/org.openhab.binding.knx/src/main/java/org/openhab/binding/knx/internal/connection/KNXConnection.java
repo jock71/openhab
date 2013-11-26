@@ -206,7 +206,10 @@ public class KNXConnection implements ManagedService {
 				}
 			}
 			
-		} catch (KNXException | UnknownHostException e) {
+		} catch (KNXException e) {
+			logger.error("Error connecting to KNX bus: {}", e.getMessage());
+			scheduleReconnect();
+		} catch (UnknownHostException e) {
 			logger.error("Error connecting to KNX bus: {}", e.getMessage());
 			scheduleReconnect();
 		}
