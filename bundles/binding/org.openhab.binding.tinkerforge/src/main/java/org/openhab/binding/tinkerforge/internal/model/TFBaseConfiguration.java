@@ -1,39 +1,22 @@
 /**
- * 
- *  openHAB, the open Home Automation Bus.
- *  Copyright (C)  2013, Thomas Weiss <theo.weiss@gmail.com>
- * 
- *  See the contributors.txt file in the distribution for a
- *  full listing of individual contributors.
- * 
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as
- *  published by the Free Software Foundation; either version 3 of the
- *  License, or (at your option) any later version.
- * 
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- * 
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses>.
- * 
- *  Additional permission under GNU GPL version 3 section 7
- * 
- *  If you modify this Program, or any covered work, by linking or
- *  combining it with Eclipse (or a modified version of that library),
- *  containing parts covered by the terms of the Eclipse Public License
- *  (EPL), the licensors of this Program grant you additional permission
- *  to convey the resulting work.
- * 
+ * Copyright (c) 2010-2014, openHAB.org and others.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.binding.tinkerforge.internal.model;
+
+import java.math.BigDecimal;
 
 
 /**
  * <!-- begin-user-doc -->
  * A representation of the model object '<em><b>TF Hysteresis Configuration</b></em>'.
+ * 
+ * @author Theo Weiss
+ * @since 1.3.0
  * <!-- end-user-doc -->
  *
  * <p>
@@ -59,12 +42,12 @@ public interface TFBaseConfiguration extends TFConfig
    * </p>
    * <!-- end-user-doc -->
    * @return the value of the '<em>Threshold</em>' attribute.
-   * @see #setThreshold(int)
+   * @see #setThreshold(BigDecimal)
    * @see org.openhab.binding.tinkerforge.internal.model.ModelPackage#getTFBaseConfiguration_Threshold()
    * @model unique="false"
    * @generated
    */
-  int getThreshold();
+  BigDecimal getThreshold();
 
   /**
    * Sets the value of the '{@link org.openhab.binding.tinkerforge.internal.model.TFBaseConfiguration#getThreshold <em>Threshold</em>}' attribute.
@@ -74,7 +57,7 @@ public interface TFBaseConfiguration extends TFConfig
    * @see #getThreshold()
    * @generated
    */
-  void setThreshold(int value);
+  void setThreshold(BigDecimal value);
 
   /**
    * Returns the value of the '<em><b>Callback Period</b></em>' attribute.

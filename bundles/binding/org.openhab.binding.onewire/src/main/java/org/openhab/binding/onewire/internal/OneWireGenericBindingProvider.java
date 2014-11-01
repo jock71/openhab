@@ -1,36 +1,17 @@
 /**
- * openHAB, the open Home Automation Bus.
- * Copyright (C) 2010-2013, openHAB.org <admin@openhab.org>
+ * Copyright (c) 2010-2014, openHAB.org and others.
  *
- * See the contributors.txt file in the distribution for a
- * full listing of individual contributors.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses>.
- *
- * Additional permission under GNU GPL version 3 section 7
- *
- * If you modify this Program, or any covered work, by linking or
- * combining it with Eclipse (or a modified version of that library),
- * containing parts covered by the terms of the Eclipse Public License
- * (EPL), the licensors of this Program grant you additional permission
- * to convey the resulting work.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.binding.onewire.internal;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.openhab.binding.onewire.OneWireBindingProvider;
 import org.openhab.core.binding.BindingConfig;
@@ -64,7 +45,7 @@ import org.openhab.model.item.binding.BindingConfigParseException;
  * @since 0.6.0
  */
 public class OneWireGenericBindingProvider extends AbstractGenericBindingProvider implements OneWireBindingProvider {
-
+	private static final TreeSet<String> filterTypes = new TreeSet<String>(Arrays.asList("tukey"));
 	/**
 	 * {@inheritDoc}
 	 */
@@ -77,13 +58,12 @@ public class OneWireGenericBindingProvider extends AbstractGenericBindingProvide
 	 */
 	@Override
 	public void validateItemType(Item item, String bindingConfig) throws BindingConfigParseException {
-		if ((item instanceof NumberItem)) {
+		if ((item instanceof NumberItem) || (item instanceof ContactItem) || (item instanceof SwitchItem)) {
 			return;
 		}
 		throw new BindingConfigParseException("item '" + item.getName()
-				+ "' is of type '" + item.getClass().getSimpleName()
-				+ "', only Number type is allowed - please check your *.items configuration");
-
+			+ "' is of type '" + item.getClass().getSimpleName()
+			+ "', only Number- Contact- and Switch type is allowed - please check your *.items configuration");
 	}
 	
 	/**
@@ -99,8 +79,7 @@ public class OneWireGenericBindingProvider extends AbstractGenericBindingProvide
 		OneWireBindingConfig config = new OneWireBindingConfig();
 		
 		config.sensorId = configParts[0];
-		config.unit = configParts[1];
-									
+		parseParameters(config, configParts[1]); // extract unit and parameters
 		addBindingConfig(item, config);
 		
 		Set<Item> items = contextMap.get(context);
@@ -110,11 +89,45 @@ public class OneWireGenericBindingProvider extends AbstractGenericBindingProvide
 		}
 		items.add(item);
 	}
-		
+	/**
+	 * Parses everything after the # separator. Parameters such as filters are
+	 * separated by the pipe '|' character.
+	 * @param config reference to configuration to be set
+	 * @param unitString binding configuration text after the '#' separator
+	 * @throws BindingConfigParseException thrown if parameters are not of the form key=value
+	 */
+	private void parseParameters(OneWireBindingConfig config, String unitString) throws BindingConfigParseException {
+		String[] unitParts = unitString.split("\\|");
+		if (unitParts.length > 1) {
+			// parameters are present, parse them
+			config.unit = unitParts[0]; // first token is just the unit 
+			for (int i = 1; i < unitParts.length; i++) {
+				String[] keyValue = unitParts[i].trim().split("=");
+				if (keyValue.length != 2) {
+					throw new BindingConfigParseException("Onewire sensor parameters " +
+							"must be of form parameter=value, you have: " + unitParts[i].trim());
+				}
+				if (keyValue[0].equals("filter")) {
+					if (filterTypes.contains(keyValue[1])) {
+						config.filter = keyValue[1];
+					} else {
+						throw new BindingConfigParseException("Onewire sensor unknown filter type: " + keyValue[1]);
+					}
+				} else {
+					throw new BindingConfigParseException("Onewire sensor unknown parameter: " + keyValue[0]);
+				}
+			}
+		} else {
+			// unit string has no parameters
+			config.unit = unitString;
+		}
+	}
+	
 	
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public String getSensorId(String itemName) {
 		OneWireBindingConfig config = (OneWireBindingConfig) bindingConfigs.get(itemName);
 		return config != null ? config.sensorId : null;
@@ -123,11 +136,20 @@ public class OneWireGenericBindingProvider extends AbstractGenericBindingProvide
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public String getUnitId(String itemName) {
 		OneWireBindingConfig config = (OneWireBindingConfig) bindingConfigs.get(itemName);
 		return config != null ? config.unit : null;
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getFilter(String itemName) {
+		OneWireBindingConfig config = (OneWireBindingConfig) bindingConfigs.get(itemName);
+		return config != null ? config.filter : null;
+	}
 	
 	/**
 	 * This is an internal data structure to store information from the binding
@@ -139,6 +161,7 @@ public class OneWireGenericBindingProvider extends AbstractGenericBindingProvide
 	static private class OneWireBindingConfig implements BindingConfig {
 		public String sensorId;
 		public String unit;
+		public String filter = null;
 	}
 
 

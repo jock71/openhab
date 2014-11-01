@@ -1,30 +1,10 @@
 /**
- * openHAB, the open Home Automation Bus.
- * Copyright (C) 2010-2013, openHAB.org <admin@openhab.org>
+ * Copyright (c) 2010-2014, openHAB.org and others.
  *
- * See the contributors.txt file in the distribution for a
- * full listing of individual contributors.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses>.
- *
- * Additional permission under GNU GPL version 3 section 7
- *
- * If you modify this Program, or any covered work, by linking or
- * combining it with Eclipse (or a modified version of that library),
- * containing parts covered by the terms of the Eclipse Public License
- * (EPL), the licensors of this Program grant you additional permission
- * to convey the resulting work.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.model.script.actions;
 
@@ -34,6 +14,7 @@ import static org.quartz.TriggerBuilder.newTrigger;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.xtext.xbase.XExpression;
 import org.eclipse.xtext.xbase.lib.Procedures.Procedure0;
+import org.eclipse.xtext.xbase.lib.Procedures.Procedure1;
 import org.joda.time.base.AbstractInstant;
 import org.openhab.core.scriptengine.Script;
 import org.openhab.core.scriptengine.ScriptEngine;
@@ -106,13 +87,42 @@ public class ScriptExecution {
 	 * @throws ScriptExecutionException if an error occurs during the execution
 	 */
 	public static Timer createTimer(AbstractInstant instant, Procedure0 closure) {
+		JobDataMap dataMap = new JobDataMap();
+		dataMap.put("procedure", closure);
+		return makeTimer(instant, closure.toString(), dataMap);
+	}
+	
+	/**
+	 * Schedules a block of code (with argument) for later execution
+	 * 
+	 * @param instant the point in time when the code should be executed
+	 * @param arg1 the argument to pass to the code block
+	 * @param closure the code block to execute
+	 * 
+	 * @return a handle to the created timer, so that it can be canceled or rescheduled
+	 * @throws ScriptExecutionException if an error occurs during the execution
+	 */
+	public static Timer createTimerWithArgument(AbstractInstant instant, Object arg1, Procedure1<Object> closure) {
+		JobDataMap dataMap = new JobDataMap();
+		dataMap.put("procedure1", closure);
+		dataMap.put("argument1", arg1);
+		return makeTimer(instant, closure.toString(), dataMap);
+	}
+	
+	/**
+	 * helper function to create the timer
+	 * @param instant the point in time when the code should be executed
+	 * @param closure string for job id
+	 * @param dataMap job data map, preconfigured with arguments
+	 * @return
+	 */
+	
+	private static Timer makeTimer(AbstractInstant instant, String closure, JobDataMap dataMap) {
 		JobKey jobKey = new JobKey(instant.toString() + ": " + closure.toString());
         Trigger trigger = newTrigger().startAt(instant.toDate()).build();
 		Timer timer = new TimerImpl(jobKey, trigger.getKey(), instant);
+		dataMap.put("timer", timer);
 		try {
-			JobDataMap dataMap = new JobDataMap();
-			dataMap.put("procedure", closure);
-			dataMap.put("timer", timer);
 	        JobDetail job = newJob(TimerExecutionJob.class)
 	            .withIdentity(jobKey)
 	            .usingJobData(dataMap)
@@ -123,6 +133,6 @@ public class ScriptExecution {
 		} catch(SchedulerException e) {
 			logger.error("Failed to schedule code for execution.", e);
 			return null;
-		}
+		}		
 	}
 }

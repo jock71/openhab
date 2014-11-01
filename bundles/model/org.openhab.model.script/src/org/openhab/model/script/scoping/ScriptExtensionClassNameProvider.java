@@ -1,30 +1,10 @@
 /**
- * openHAB, the open Home Automation Bus.
- * Copyright (C) 2010-2013, openHAB.org <admin@openhab.org>
+ * Copyright (c) 2010-2014, openHAB.org and others.
  *
- * See the contributors.txt file in the distribution for a
- * full listing of individual contributors.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses>.
- *
- * Additional permission under GNU GPL version 3 section 7
- *
- * If you modify this Program, or any covered work, by linking or
- * combining it with Eclipse (or a modified version of that library),
- * containing parts covered by the terms of the Eclipse Public License
- * (EPL), the licensors of this Program grant you additional permission
- * to convey the resulting work.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.model.script.scoping;
 
@@ -34,6 +14,8 @@ import java.net.URLEncoder;
 import java.util.Collection;
 
 import org.apache.commons.lang.StringUtils;
+import org.eclipse.xtext.xbase.lib.CollectionLiterals;
+import org.eclipse.xtext.xbase.lib.InputOutput;
 import org.eclipse.xtext.xbase.scoping.featurecalls.StaticImplicitMethodsFeatureForTypeProvider.ExtensionClassNameProvider;
 import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
@@ -46,6 +28,8 @@ import org.openhab.model.script.actions.LogAction;
 import org.openhab.model.script.actions.ScriptExecution;
 import org.openhab.model.script.internal.ScriptActivator;
 import org.openhab.model.script.lib.NumberExtensions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Multimap;
 import com.google.inject.Singleton;
@@ -58,18 +42,25 @@ import com.google.inject.Singleton;
  * @since 0.9.0
  *
  */
-@SuppressWarnings("restriction")
+@SuppressWarnings({ "restriction", "deprecation" })
 @Singleton
 public class ScriptExtensionClassNameProvider extends ExtensionClassNameProvider {
 
+	private final static Logger logger = LoggerFactory.getLogger(ScriptExtensionClassNameProvider.class);
+	
 	private int trackingCount = -1;
 	
 	@Override
-	protected Collection<String> getLiteralClassNames() {
+	protected synchronized Collection<String> getLiteralClassNames() {
 		int currentTrackingCount = ScriptActivator.actionServiceTracker.getTrackingCount();
 		
 		// if something has changed about the tracked services, recompute the list
 		if(trackingCount != currentTrackingCount) {
+			String actions = "";
+			for(Object obj : ScriptActivator.actionServiceTracker.getServices()) {
+				actions += obj.getClass().getSimpleName() + ", ";
+			}
+			logger.debug("Script actions have changed: " + actions);
 			trackingCount = currentTrackingCount;
 			return computeLiteralClassNames();
 		} else {
@@ -79,25 +70,37 @@ public class ScriptExtensionClassNameProvider extends ExtensionClassNameProvider
 
 	@Override
 	protected Collection<String> computeLiteralClassNames() {
-		Collection<String> extensions = super.computeLiteralClassNames();
+
+		// we completely define the content ourselves, but need the collection
+		// instance from the super class as it is a private field
+		Collection<String> literalClassNames = super.getLiteralClassNames();
+		
+		if(literalClassNames==null) {
+			literalClassNames = super.computeLiteralClassNames();
+		}
+
+		literalClassNames.clear();
 		
 		// add all actions that are contributed as OSGi services
 		Object[] services = ScriptActivator.actionServiceTracker.getServices();
 		if(services!=null) {
 			for(Object service : services) {
 				ActionService actionService = (ActionService) service;
-				extensions.add(actionService.getActionClassName());
+				literalClassNames.add(actionService.getActionClassName());
 			}
 		}
 		
-		extensions.add(BusEvent.class.getCanonicalName());
-		extensions.add(ScriptExecution.class.getCanonicalName());
-		extensions.add(LogAction.class.getCanonicalName());
+		literalClassNames.add(CollectionLiterals.class.getName());
+		literalClassNames.add(InputOutput.class.getName());
+
+		literalClassNames.add(BusEvent.class.getCanonicalName());
+		literalClassNames.add(ScriptExecution.class.getCanonicalName());
+		literalClassNames.add(LogAction.class.getCanonicalName());
 
 		// jodatime static functions
-		extensions.add(DateTime.class.getCanonicalName());
-		extensions.add(DateMidnight.class.getCanonicalName());
-		return extensions;
+		literalClassNames.add(DateTime.class.getCanonicalName());
+		literalClassNames.add(DateMidnight.class.getCanonicalName());
+		return literalClassNames;
 	}
 	
 	@Override

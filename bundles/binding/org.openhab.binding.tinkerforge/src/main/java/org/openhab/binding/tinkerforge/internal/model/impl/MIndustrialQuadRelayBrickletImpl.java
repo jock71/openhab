@@ -1,32 +1,10 @@
 /**
- * 
- *  Tinkerforge Binding Copyright (C) 2013 Theo Weiss <theo.weiss@gmail.com> contributed to: openHAB, the open Home Automation Bus.
- *  Copyright (C)  2013, openHAB.org <admin@openhab.org>
- * 
- *  See the contributors.txt file in the distribution for a
- *  full listing of individual contributors.
- * 
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as
- *  published by the Free Software Foundation; either version 3 of the
- *  License, or (at your option) any later version.
- * 
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- * 
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses>.
- * 
- *  Additional permission under GNU GPL version 3 section 7
- * 
- *  If you modify this Program, or any covered work, by linking or
- *  combining it with Eclipse (or a modified version of that library),
- *  containing parts covered by the terms of the Eclipse Public License
- *  (EPL), the licensors of this Program grant you additional permission
- *  to convey the resulting work.
- * 
+ * Copyright (c) 2010-2014, openHAB.org and others.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.binding.tinkerforge.internal.model.impl;
 
@@ -59,19 +37,25 @@ import org.openhab.binding.tinkerforge.internal.model.MIndustrialQuadRelay;
 import org.openhab.binding.tinkerforge.internal.model.MIndustrialQuadRelayBricklet;
 import org.openhab.binding.tinkerforge.internal.model.MSubDevice;
 import org.openhab.binding.tinkerforge.internal.model.MSubDeviceHolder;
+import org.openhab.binding.tinkerforge.internal.model.ModelFactory;
 import org.openhab.binding.tinkerforge.internal.model.ModelPackage;
 
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>MIndustrial Quad Relay Bricklet</b></em>'.
+ * 
+ * @author Theo Weiss
+ * @since 1.4.0
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
  * <ul>
  *   <li>{@link org.openhab.binding.tinkerforge.internal.model.impl.MIndustrialQuadRelayBrickletImpl#getLogger <em>Logger</em>}</li>
  *   <li>{@link org.openhab.binding.tinkerforge.internal.model.impl.MIndustrialQuadRelayBrickletImpl#getUid <em>Uid</em>}</li>
+ *   <li>{@link org.openhab.binding.tinkerforge.internal.model.impl.MIndustrialQuadRelayBrickletImpl#isPoll <em>Poll</em>}</li>
  *   <li>{@link org.openhab.binding.tinkerforge.internal.model.impl.MIndustrialQuadRelayBrickletImpl#getEnabledA <em>Enabled A</em>}</li>
  *   <li>{@link org.openhab.binding.tinkerforge.internal.model.impl.MIndustrialQuadRelayBrickletImpl#getTinkerforgeDevice <em>Tinkerforge Device</em>}</li>
  *   <li>{@link org.openhab.binding.tinkerforge.internal.model.impl.MIndustrialQuadRelayBrickletImpl#getIpConnection <em>Ip Connection</em>}</li>
@@ -127,6 +111,26 @@ public class MIndustrialQuadRelayBrickletImpl extends MinimalEObjectImpl.Contain
    * @ordered
    */
   protected String uid = UID_EDEFAULT;
+
+  /**
+   * The default value of the '{@link #isPoll() <em>Poll</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see #isPoll()
+   * @generated
+   * @ordered
+   */
+  protected static final boolean POLL_EDEFAULT = true;
+
+  /**
+   * The cached value of the '{@link #isPoll() <em>Poll</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @see #isPoll()
+   * @generated
+   * @ordered
+   */
+  protected boolean poll = POLL_EDEFAULT;
 
   /**
    * The default value of the '{@link #getEnabledA() <em>Enabled A</em>}' attribute.
@@ -333,6 +337,29 @@ public class MIndustrialQuadRelayBrickletImpl extends MinimalEObjectImpl.Contain
     uid = newUid;
     if (eNotificationRequired())
       eNotify(new ENotificationImpl(this, Notification.SET, ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__UID, oldUid, uid));
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public boolean isPoll()
+  {
+    return poll;
+  }
+
+  /**
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @generated
+   */
+  public void setPoll(boolean newPoll)
+  {
+    boolean oldPoll = poll;
+    poll = newPoll;
+    if (eNotificationRequired())
+      eNotify(new ENotificationImpl(this, Notification.SET, ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__POLL, oldPoll, poll));
   }
 
   /**
@@ -558,49 +585,53 @@ public class MIndustrialQuadRelayBrickletImpl extends MinimalEObjectImpl.Contain
   /**
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
-   * @generated
+   * @generated NOT
    */
   public void initSubDevices()
   {
-    // TODO: implement this method
-    // Ensure that you remove @generated or mark it @generated NOT
-    throw new UnsupportedOperationException();
+		ModelFactory factory = ModelFactory.eINSTANCE;
+		for (int i = 0; i < 4; i++) {
+			MIndustrialQuadRelay relay = factory.createMIndustrialQuadRelay();
+			relay.setUid(uid);
+			String subId = "relay" + String.valueOf(i);
+			logger.debug("addSubDevice " + subId);
+			relay.setSubId(subId);
+			relay.init();
+			relay.setMbrick(this);
+			getMsubdevices().add(relay);
+		}
   }
 
   /**
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
-   * @generated
+   * @generated NOT
    */
   public void init()
   {
-    // TODO: implement this method
-    // Ensure that you remove @generated or mark it @generated NOT
-    throw new UnsupportedOperationException();
+		setEnabledA(new AtomicBoolean());
+	    logger = LoggerFactory.getLogger(MIndustrialQuadRelayBricklet.class);
   }
 
   /**
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
-   * @generated
+   * @generated NOT
    */
   public void enable()
   {
-    // TODO: implement this method
-    // Ensure that you remove @generated or mark it @generated NOT
-    throw new UnsupportedOperationException();
+	  logger.debug("enable called on MDualRelayBricklet");
+	  tinkerforgeDevice = new BrickletIndustrialQuadRelay(getUid(), getIpConnection());
   }
 
   /**
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
-   * @generated
+   * @generated NOT
    */
   public void disable()
   {
-    // TODO: implement this method
-    // Ensure that you remove @generated or mark it @generated NOT
-    throw new UnsupportedOperationException();
+	tinkerforgeDevice = null;
   }
 
   /**
@@ -672,6 +703,8 @@ public class MIndustrialQuadRelayBrickletImpl extends MinimalEObjectImpl.Contain
         return getLogger();
       case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__UID:
         return getUid();
+      case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__POLL:
+        return isPoll();
       case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__ENABLED_A:
         return getEnabledA();
       case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__TINKERFORGE_DEVICE:
@@ -710,6 +743,9 @@ public class MIndustrialQuadRelayBrickletImpl extends MinimalEObjectImpl.Contain
         return;
       case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__UID:
         setUid((String)newValue);
+        return;
+      case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__POLL:
+        setPoll((Boolean)newValue);
         return;
       case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__ENABLED_A:
         setEnabledA((AtomicBoolean)newValue);
@@ -759,6 +795,9 @@ public class MIndustrialQuadRelayBrickletImpl extends MinimalEObjectImpl.Contain
       case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__UID:
         setUid(UID_EDEFAULT);
         return;
+      case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__POLL:
+        setPoll(POLL_EDEFAULT);
+        return;
       case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__ENABLED_A:
         setEnabledA(ENABLED_A_EDEFAULT);
         return;
@@ -804,6 +843,8 @@ public class MIndustrialQuadRelayBrickletImpl extends MinimalEObjectImpl.Contain
         return LOGGER_EDEFAULT == null ? logger != null : !LOGGER_EDEFAULT.equals(logger);
       case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__UID:
         return UID_EDEFAULT == null ? uid != null : !UID_EDEFAULT.equals(uid);
+      case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__POLL:
+        return poll != POLL_EDEFAULT;
       case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__ENABLED_A:
         return ENABLED_A_EDEFAULT == null ? enabledA != null : !ENABLED_A_EDEFAULT.equals(enabledA);
       case ModelPackage.MINDUSTRIAL_QUAD_RELAY_BRICKLET__TINKERFORGE_DEVICE:
@@ -924,6 +965,8 @@ public class MIndustrialQuadRelayBrickletImpl extends MinimalEObjectImpl.Contain
     result.append(logger);
     result.append(", uid: ");
     result.append(uid);
+    result.append(", poll: ");
+    result.append(poll);
     result.append(", enabledA: ");
     result.append(enabledA);
     result.append(", tinkerforgeDevice: ");

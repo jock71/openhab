@@ -1,30 +1,10 @@
 /**
- * openHAB, the open Home Automation Bus.
- * Copyright (C) 2010-2013, openHAB.org <admin@openhab.org>
+ * Copyright (c) 2010-2014, openHAB.org and others.
  *
- * See the contributors.txt file in the distribution for a
- * full listing of individual contributors.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses>.
- *
- * Additional permission under GNU GPL version 3 section 7
- *
- * If you modify this Program, or any covered work, by linking or
- * combining it with Eclipse (or a modified version of that library),
- * containing parts covered by the terms of the Eclipse Public License
- * (EPL), the licensors of this Program grant you additional permission
- * to convey the resulting work.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.ui.internal.items;
 
@@ -33,6 +13,9 @@ import static org.junit.Assert.assertNull;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import java.text.DecimalFormatSymbols;
+
 import junit.framework.Assert;
 
 import org.junit.Before;
@@ -54,6 +37,9 @@ public class ItemUIRegistryImplTest {
 
 	static private ItemRegistry registry;
 	static private ItemUIRegistryImpl uiRegistry = new ItemUIRegistryImpl();
+	// we need to get the decimal separator of the default locale for our tests
+	static private final char sep = (new DecimalFormatSymbols().getDecimalSeparator());
+
 
 	@Before
 	public void prepareRegistry() {
@@ -107,6 +93,34 @@ public class ItemUIRegistryImplTest {
 	}
 
 	@Test
+	public void getLabel_labelWithIntegerValueAndWidth() throws ItemNotFoundException {
+		String testLabel = "Label [%3d]";
+		Widget w = mock(Widget.class);
+		Item item = mock(Item.class);
+		when(w.getLabel()).thenReturn(testLabel);
+		when(w.getItem()).thenReturn("Item");
+		when(registry.getItem("Item")).thenReturn(item);
+		when(item.getState()).thenReturn(new DecimalType(20));
+		when(item.getStateAs(DecimalType.class)).thenReturn(new DecimalType(20));
+		String label = uiRegistry.getLabel(w);
+		assertEquals("Label [ 20]", label);
+	}
+
+	@Test
+	public void getLabel_labelWithHexValueAndWidth() throws ItemNotFoundException {
+		String testLabel = "Label [%3x]";
+		Widget w = mock(Widget.class);
+		Item item = mock(Item.class);
+		when(w.getLabel()).thenReturn(testLabel);
+		when(w.getItem()).thenReturn("Item");
+		when(registry.getItem("Item")).thenReturn(item);
+		when(item.getState()).thenReturn(new DecimalType(20));
+		when(item.getStateAs(DecimalType.class)).thenReturn(new DecimalType(20));
+		String label = uiRegistry.getLabel(w);
+		assertEquals("Label [ 14]", label);
+	}
+
+	@Test
 	public void getLabel_labelWithDecimalValue() throws ItemNotFoundException {
 		String testLabel = "Label [%.3f]";
 		Widget w = mock(Widget.class);
@@ -117,7 +131,7 @@ public class ItemUIRegistryImplTest {
 		when(item.getState()).thenReturn(new DecimalType(10f/3f));
 		when(item.getStateAs(DecimalType.class)).thenReturn(new DecimalType(10f/3f));
 		String label = uiRegistry.getLabel(w);
-		assertEquals("Label [3.333]", label);
+		assertEquals("Label [3" + sep + "333]", label);
 	}
 
 	@Test
@@ -131,7 +145,7 @@ public class ItemUIRegistryImplTest {
 		when(item.getState()).thenReturn(new DecimalType(10f/3f));
 		when(item.getStateAs(DecimalType.class)).thenReturn(new DecimalType(10f/3f));
 		String label = uiRegistry.getLabel(w);
-		assertEquals("Label [3.3 %]", label);
+		assertEquals("Label [3" + sep + "3 %]", label);
 	}
 
 	@Test

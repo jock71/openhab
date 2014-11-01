@@ -1,30 +1,10 @@
 /**
- * openHAB, the open Home Automation Bus.
- * Copyright (C) 2010-2013, openHAB.org <admin@openhab.org>
+ * Copyright (c) 2010-2014, openHAB.org and others.
  *
- * See the contributors.txt file in the distribution for a
- * full listing of individual contributors.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses>.
- *
- * Additional permission under GNU GPL version 3 section 7
- *
- * If you modify this Program, or any covered work, by linking or
- * combining it with Eclipse (or a modified version of that library),
- * containing parts covered by the terms of the Eclipse Public License
- * (EPL), the licensors of this Program grant you additional permission
- * to convey the resulting work.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.binding.fritzaha.internal.hardware.callbacks;
 
@@ -95,6 +75,8 @@ public class FritzahaQueryscriptUpdateNumberCallback extends FritzahaReauthCallb
 				valueType = "MM_Value_Amp";
 			} else if (type == MeterType.POWER) {
 				valueType = "MM_Value_Power";
+			} else if (type == MeterType.ENERGY) {
+				valueType = "";
 			} else
 				return;
 			ObjectMapper jsonReader = new ObjectMapper();
@@ -111,7 +93,25 @@ public class FritzahaQueryscriptUpdateNumberCallback extends FritzahaReauthCallb
 				logger.error("An I/O error occured while decoding JSON:\n" + response);
 				return;
 			}
-			if (deviceData.containsKey(valueType)) {
+			if (type == MeterType.ENERGY) {
+				String ValIdent = "EnStats_watt_value_";
+				long valCount=Long.parseLong(deviceData.get("EnStats_count"));
+				BigDecimal meterValue = new BigDecimal(0);
+				BigDecimal meterValueScaled;
+				long tmplong;
+				BigDecimal tmpBD;
+				for( int tmpcnt=1; tmpcnt <= valCount; tmpcnt++ ) {
+					tmplong = Long.parseLong(deviceData.get(ValIdent + tmpcnt));
+					meterValue = meterValue.add(new BigDecimal(tmplong));
+				}
+				if(Long.parseLong(deviceData.get("EnStats_timer_type")) == 10)
+					// 10 Minute values are given in mWh, so scale to Wh
+					meterValueScaled = meterValue.scaleByPowerOfTen(-6);
+				else 
+					// Other values are given in Wh, so scale to kWh
+					meterValueScaled = meterValue.scaleByPowerOfTen(-3);
+				webIface.postUpdate(itemName, new DecimalType(meterValueScaled));
+			} else if (deviceData.containsKey(valueType)) {
 				BigDecimal meterValue = new BigDecimal(deviceData.get(valueType));
 				BigDecimal meterValueScaled;
 				switch (type) {

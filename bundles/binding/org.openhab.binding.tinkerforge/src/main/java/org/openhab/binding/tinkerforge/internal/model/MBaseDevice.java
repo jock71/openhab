@@ -1,32 +1,10 @@
 /**
- * 
- *  openHAB, the open Home Automation Bus.
- *  Copyright (C) 2010-2013, openHAB.org <admin@openhab.org>
- * 
- *  See the contributors.txt file in the distribution for a
- *  full listing of individual contributors.
- * 
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as
- *  published by the Free Software Foundation; either version 3 of the
- *  License, or (at your option) any later version.
- * 
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- * 
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses>.
- * 
- *  Additional permission under GNU GPL version 3 section 7
- * 
- *  If you modify this Program, or any covered work, by linking or
- *  combining it with Eclipse (or a modified version of that library),
- *  containing parts covered by the terms of the Eclipse Public License
- *  (EPL), the licensors of this Program grant you additional permission
- *  to convey the resulting work.
- * 
+ * Copyright (c) 2010-2014, openHAB.org and others.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.binding.tinkerforge.internal.model;
 
@@ -38,6 +16,9 @@ import org.slf4j.Logger;
 /**
  * <!-- begin-user-doc -->
  * A representation of the model object '<em><b>MBase Device</b></em>'.
+ * 
+ * @author Theo Weiss
+ * @since 1.3.0
  * <!-- end-user-doc -->
  *
  * <p>
@@ -45,6 +26,7 @@ import org.slf4j.Logger;
  * <ul>
  *   <li>{@link org.openhab.binding.tinkerforge.internal.model.MBaseDevice#getLogger <em>Logger</em>}</li>
  *   <li>{@link org.openhab.binding.tinkerforge.internal.model.MBaseDevice#getUid <em>Uid</em>}</li>
+ *   <li>{@link org.openhab.binding.tinkerforge.internal.model.MBaseDevice#isPoll <em>Poll</em>}</li>
  *   <li>{@link org.openhab.binding.tinkerforge.internal.model.MBaseDevice#getEnabledA <em>Enabled A</em>}</li>
  * </ul>
  * </p>
@@ -106,6 +88,33 @@ public interface MBaseDevice extends EObject
    * @generated
    */
   void setUid(String value);
+
+  /**
+   * Returns the value of the '<em><b>Poll</b></em>' attribute.
+   * The default value is <code>"true"</code>.
+   * <!-- begin-user-doc -->
+   * <p>
+   * If the meaning of the '<em>Poll</em>' attribute isn't clear,
+   * there really should be more of a description here...
+   * </p>
+   * <!-- end-user-doc -->
+   * @return the value of the '<em>Poll</em>' attribute.
+   * @see #setPoll(boolean)
+   * @see org.openhab.binding.tinkerforge.internal.model.ModelPackage#getMBaseDevice_Poll()
+   * @model default="true" unique="false"
+   * @generated
+   */
+  boolean isPoll();
+
+  /**
+   * Sets the value of the '{@link org.openhab.binding.tinkerforge.internal.model.MBaseDevice#isPoll <em>Poll</em>}' attribute.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @param value the new value of the '<em>Poll</em>' attribute.
+   * @see #isPoll()
+   * @generated
+   */
+  void setPoll(boolean value);
 
   /**
    * Returns the value of the '<em><b>Enabled A</b></em>' attribute.

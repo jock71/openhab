@@ -1,30 +1,10 @@
 /**
- * openHAB, the open Home Automation Bus.
- * Copyright (C) 2010-2013, openHAB.org <admin@openhab.org>
+ * Copyright (c) 2010-2014, openHAB.org and others.
  *
- * See the contributors.txt file in the distribution for a
- * full listing of individual contributors.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses>.
- *
- * Additional permission under GNU GPL version 3 section 7
- *
- * If you modify this Program, or any covered work, by linking or
- * combining it with Eclipse (or a modified version of that library),
- * containing parts covered by the terms of the Eclipse Public License
- * (EPL), the licensors of this Program grant you additional permission
- * to convey the resulting work.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.binding.tcp.protocol.internal;
 
@@ -41,7 +21,6 @@ import org.openhab.binding.tcp.Direction;
 import org.openhab.binding.tcp.internal.TCPActivator;
 import org.openhab.binding.tcp.protocol.ProtocolBindingProvider;
 import org.openhab.binding.tcp.protocol.UDPBindingProvider;
-import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.transform.TransformationException;
 import org.openhab.core.transform.TransformationHelper;
 import org.openhab.core.transform.TransformationService;
@@ -80,6 +59,8 @@ public class UDPBinding extends AbstractDatagramChannelBinding<UDPBindingProvide
 	private static String postAmble = "\r\n";
 	// flag to use the reply of the remote end to update the status of the Item receiving the data
 	private static boolean updateWithResponse = true;
+	// used character set
+	private static String charset = "ASCII";
 
 	@Override
 	protected boolean internalReceiveChanneledCommand(String itemName,
@@ -88,19 +69,14 @@ public class UDPBinding extends AbstractDatagramChannelBinding<UDPBindingProvide
 		ProtocolBindingProvider provider = findFirstMatchingBindingProvider(itemName);
 
 		if(command != null ){		
-			String UDPCommandName = null;
+			
+			String transformedMessage = transformResponse(provider.getProtocolCommand(itemName, command),commandAsString);
+			String UDPCommandName = preAmble + transformedMessage + postAmble ;
 
-			if(command instanceof DecimalType) {
-				UDPCommandName = commandAsString;
-			} else {
-				UDPCommandName = provider.getProtocolCommand(itemName,command);
-			}
-
-			UDPCommandName = preAmble + UDPCommandName + postAmble ;
-
-			ByteBuffer outputBuffer = ByteBuffer.allocate(UDPCommandName.getBytes().length);
+			ByteBuffer outputBuffer = null;
 			try {
-				outputBuffer.put(UDPCommandName.getBytes("ASCII"));
+				outputBuffer = ByteBuffer.allocate(UDPCommandName.getBytes(charset).length);
+				outputBuffer.put(UDPCommandName.getBytes(charset));
 			} catch (UnsupportedEncodingException e) {
 				logger.warn("Exception while attempting an unsupported encoding scheme");
 			}
@@ -114,8 +90,15 @@ public class UDPBinding extends AbstractDatagramChannelBinding<UDPBindingProvide
 			}
 
 			if(result!=null && blocking) {
-				logger.info("Received {} from the remote end {}",new String(result.array()),sChannel.toString());
-				String transformedResponse = transformResponse(provider.getProtocolCommand(itemName, command),new String(result.array()));
+				String resultString = "";
+				try {
+					resultString = new String(result.array(), charset);
+				} catch (UnsupportedEncodingException e) {
+					logger.warn("Exception while attempting an unsupported encoding scheme");
+				}
+				
+				logger.info("Received {} from the remote end {}", resultString, sChannel.toString());
+				String transformedResponse = transformResponse(provider.getProtocolCommand(itemName, command), resultString);
 
 				// if the remote-end does not send a reply in response to the string we just sent, then the abstract superclass will update
 				// the openhab status of the item for us. If it does reply, then an additional update is done via parseBuffer.
@@ -152,21 +135,20 @@ public class UDPBinding extends AbstractDatagramChannelBinding<UDPBindingProvide
 	 */
 	@Override
 	protected void parseBuffer(String itemName, Command aCommand, Direction theDirection,ByteBuffer byteBuffer){
-
-		String theUpdate = new String(byteBuffer.array());
+		
+		String theUpdate = "";
+		try {
+			theUpdate = new String(byteBuffer.array(), charset);
+		} catch (UnsupportedEncodingException e) {
+			logger.warn("Exception while attempting an unsupported encoding scheme");
+		}
+		
 		ProtocolBindingProvider provider = findFirstMatchingBindingProvider(itemName);
 
 		List<Class<? extends State>> stateTypeList = provider.getAcceptedDataTypes(itemName,aCommand);
-		State newState = null;
 
-		if(aCommand instanceof DecimalType) {
-			String transformedResponse = transformResponse(provider.getProtocolCommand(itemName, aCommand),theUpdate);
-			newState = createStateFromString(stateTypeList,transformedResponse);
-		} else {
-			if(provider.getProtocolCommand(itemName, aCommand).equals(theUpdate)) {
-				newState = createStateFromString(stateTypeList,aCommand.toString());
-			} 
-		}
+		String transformedResponse = transformResponse(provider.getProtocolCommand(itemName, aCommand),theUpdate);
+		State newState = createStateFromString(stateTypeList,transformedResponse);
 
 		if(newState != null) {
 			eventPublisher.postUpdate(itemName, newState);							        						
@@ -199,14 +181,24 @@ public class UDPBinding extends AbstractDatagramChannelBinding<UDPBindingProvide
 
 			String preambleString = (String) config.get("preamble");
 			if (StringUtils.isNotBlank(preambleString)) {
-				preAmble = preambleString.replaceAll("\\\\", "\\");
+				try {
+					preAmble = preambleString.replaceAll("\\\\", "\\");
+				}
+				catch(Exception e) {
+					preAmble = preambleString;
+				}
 			} else {
 				logger.info("The preamble for all write operations will be set to the default vaulue of {}",preAmble);
 			}
 
 			String postambleString = (String) config.get("postamble");
 			if (StringUtils.isNotBlank(postambleString)) {
-				postAmble = postambleString.replaceAll("\\\\", "\\");;
+				try {
+					postAmble = postambleString.replaceAll("\\\\", "\\");
+				}
+				catch(Exception e) {
+					postAmble = postambleString;
+				}
 			} else {
 				logger.info("The postamble for all write operations will be set to the default vaulue of {}",postAmble);
 			}
@@ -216,6 +208,13 @@ public class UDPBinding extends AbstractDatagramChannelBinding<UDPBindingProvide
 				updateWithResponse = Boolean.parseBoolean((updatewithresponseString));
 			} else {
 				logger.info("Updating states with returned values will be set to the default vaulue of {}",updateWithResponse);
+			}
+
+			String charsetString = (String) config.get("charset");
+			if (StringUtils.isNotBlank(charsetString)) {
+				charset = charsetString;
+			} else {
+				logger.info("The characterset will be set to the default vaulue of {}",charset);
 			}
 
 		}
@@ -265,7 +264,7 @@ public class UDPBinding extends AbstractDatagramChannelBinding<UDPBindingProvide
 				logger.warn("couldn't transform response because transformationService of type '{}' is unavailable", transformationType);
 			}
 		}
-		catch (TransformationException te) {
+		catch (Exception te) {
 			logger.error("transformation throws exception [transformation="
 					+ transformation + ", response=" + response + "]", te);
 
@@ -277,6 +276,16 @@ public class UDPBinding extends AbstractDatagramChannelBinding<UDPBindingProvide
 		logger.debug("transformed response is '{}'", transformedResponse);
 
 		return transformedResponse;
+	}
+	
+
+
+	/**
+	 * @{inheritDoc}
+	 */
+	@Override
+	protected String getName() {
+		return "UDP Refresh Service";
 	}
 
 

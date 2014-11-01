@@ -1,34 +1,15 @@
 /**
- * openHAB, the open Home Automation Bus.
- * Copyright (C) 2010-2013, openHAB.org <admin@openhab.org>
+ * Copyright (c) 2010-2014, openHAB.org and others.
  *
- * See the contributors.txt file in the distribution for a
- * full listing of individual contributors.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses>.
- *
- * Additional permission under GNU GPL version 3 section 7
- *
- * If you modify this Program, or any covered work, by linking or
- * combining it with Eclipse (or a modified version of that library),
- * containing parts covered by the terms of the Eclipse Public License
- * (EPL), the licensors of this Program grant you additional permission
- * to convey the resulting work.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.binding.tinkerforge.internal;
 
 import org.openhab.binding.tinkerforge.TinkerforgeBindingProvider;
+import org.openhab.binding.tinkerforge.internal.config.DeviceOptions;
 import org.openhab.core.binding.BindingConfig;
 import org.openhab.core.items.Item;
 import org.openhab.model.item.binding.AbstractGenericBindingProvider;
@@ -93,7 +74,8 @@ public class TinkerforgeGenericBindingProvider extends
 			logger.error("got bindingConfig null for item: {}", item.getName());
 		} else {
 			TinkerforgeBindingConfig config = new TinkerforgeBindingConfig();
-			String[] tokens = bindingConfig.trim().split(",");
+            DeviceOptions deviceOptions = new DeviceOptions();
+            String[] tokens = bindingConfig.trim().split(",");
 			for (String token : tokens) {
 				token = token.trim();
 				logger.debug("token: {}", token);
@@ -112,40 +94,72 @@ public class TinkerforgeGenericBindingProvider extends
 					} else if (key.equals(ConfigKey.name.name())) {
 						config.setName(value);
 					} else {
-						throw new BindingConfigParseException(
-								"unknown configuration key: " + key);
-					}
+                      deviceOptions.put(key, value);
+                      }
 				}
 			}
+			config.setDeviceOptions(deviceOptions);
+			config.setItem(item);
 			addBindingConfig(item, config);
 		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String getUid(String itemName) {
 		TinkerforgeBindingConfig config = (TinkerforgeBindingConfig) bindingConfigs.get(itemName);
 		return config != null ? config.getUid() : null;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String getSubId(String itemName) {
 		TinkerforgeBindingConfig config = (TinkerforgeBindingConfig) bindingConfigs.get(itemName);
 		return config != null ? config.getSubId() : null;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public Item getItem(String itemName) {
 		TinkerforgeBindingConfig config = (TinkerforgeBindingConfig) bindingConfigs.get(itemName);
 		return config != null ? config.getItem() : null;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public Class<? extends Item> getItemType(String itemName) {
+		TinkerforgeBindingConfig config = (TinkerforgeBindingConfig) bindingConfigs.get(itemName);
+		return config != null ? config.getItemType() : null;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String getName(String itemName) {
 		TinkerforgeBindingConfig config = (TinkerforgeBindingConfig) bindingConfigs.get(itemName);
 		return config != null ? config.getName() : null;
 	}
 
-	/**
+    
+    /**
+     * {@inheritDoc}
+     */
+      @Override
+      public DeviceOptions getDeviceOptions(String itemName) {
+        TinkerforgeBindingConfig config = (TinkerforgeBindingConfig) bindingConfigs.get(itemName);
+        return config != null ? config.getDeviceOptions() : null;
+      }
+
+      /**
 	 * This class represents the configuration of an Item that is binded to a
 	 * tinkerforge device. It can hold the following information:
 	 * 
@@ -167,6 +181,11 @@ public class TinkerforgeGenericBindingProvider extends
 		private String subId;
 		private String name;
 		private Item item;
+        private DeviceOptions deviceOptions;
+
+       Class<? extends Item> getItemType() {
+			return item.getClass();
+		}
 
 		public Item getItem() {
 			return item;
@@ -199,6 +218,13 @@ public class TinkerforgeGenericBindingProvider extends
 		public void setName(String name) {
 			this.name = name;
 		}
-	}
+        
+        public DeviceOptions getDeviceOptions(){
+          return this.deviceOptions;
+        }
 
+        public void setDeviceOptions (DeviceOptions deviceOptions){
+          this.deviceOptions = deviceOptions;
+        }
+	}
 }

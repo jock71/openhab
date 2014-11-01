@@ -1,30 +1,10 @@
 /**
- * openHAB, the open Home Automation Bus.
- * Copyright (C) 2010-2013, openHAB.org <admin@openhab.org>
+ * Copyright (c) 2010-2014, openHAB.org and others.
  *
- * See the contributors.txt file in the distribution for a
- * full listing of individual contributors.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses>.
- *
- * Additional permission under GNU GPL version 3 section 7
- *
- * If you modify this Program, or any covered work, by linking or
- * combining it with Eclipse (or a modified version of that library),
- * containing parts covered by the terms of the Eclipse Public License
- * (EPL), the licensors of this Program grant you additional permission
- * to convey the resulting work.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.binding.hue.internal;
 
@@ -35,10 +15,11 @@ import java.util.HashMap;
 import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.hue.HueBindingProvider;
 import org.openhab.binding.hue.internal.HueBindingConfig.BindingType;
+import org.openhab.binding.hue.internal.data.HueSettings;
 import org.openhab.binding.hue.internal.hardware.HueBridge;
 import org.openhab.binding.hue.internal.hardware.HueBulb;
 import org.openhab.binding.hue.internal.tools.SsdpDiscovery;
-import org.openhab.core.binding.AbstractBinding;
+import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.HSBType;
 import org.openhab.core.library.types.IncreaseDecreaseType;
@@ -60,12 +41,16 @@ import org.slf4j.LoggerFactory;
  * </ul>
  * 
  * @author Roman Hartmann
+ * @author Jos Schering
  * @since 1.2.0
  */
-public class HueBinding extends AbstractBinding<HueBindingProvider> implements ManagedService {
+public class HueBinding extends AbstractActiveBinding<HueBindingProvider> implements ManagedService {
 
 	static final Logger logger = LoggerFactory.getLogger(HueBinding.class);
 
+	/** refresh interval is only set by configuration */
+	private long refreshInterval;
+	
 	private HueBridge activeBridge = null;
 	private String bridgeIP = null;
 	private String bridgeSecret = "openHAB";
@@ -81,6 +66,99 @@ public class HueBinding extends AbstractBinding<HueBindingProvider> implements M
 	public HueBinding() {
 	}
 
+	/**
+     * @{inheritDoc}
+     */
+    @Override
+    protected long getRefreshInterval() {
+    	return refreshInterval;
+    }
+    
+	/**
+     * @{inheritDoc}
+     */
+    @Override
+    protected String getName() {
+    	return "Hue Refresh Service";
+    }
+    
+	/**
+	 * Get current hue settings of the bulbs and update the items that are connected with the bulb.
+	 * The refreshinterval determines the polling frequency.
+	 */
+	@Override
+	public void execute() {
+		if (activeBridge != null)
+		{
+			// Get settings and update the bulbs
+			// Observation : If the power of a hue lamp is removed, the status is not updated in hue hub.
+			// The heartbeat functionality should fix this, but 
+			HueSettings settings = activeBridge.getSettings();
+			for (int i = 1; i <= settings.getCount(); i++) {
+				HueBulb bulb = bulbCache.get(i);
+				if (bulb == null) {
+					bulb = new HueBulb(activeBridge, i);
+					bulbCache.put(i, bulb);
+				}
+				bulb.getStatus(settings);
+			}
+			
+			// Update the items that are linked with the bulbs.
+			// Multiple items of different types can be linked to one bulb.
+			for (HueBindingProvider provider : this.providers) {
+				for (String hueItemName : provider.getInBindingItemNames()) {
+					HueBindingConfig deviceConfig = getConfigForItemName(hueItemName);
+					
+					if (deviceConfig != null) {
+						HueBulb bulb = bulbCache.get(deviceConfig.getDeviceNumber());
+						if (bulb != null) {
+						
+							// Enhancement: only send a postUpdate for items that have changed.
+							// Tried to use item.getState() as found in enOcean binding, but the state value was always uninitialized
+							// State actualState = provider.getItem(itemName).getState(); --> always return Uninitialized
+							// Workaround for now, store the OnOff state in deviceConfig 
+							//
+							if ((bulb.getIsOn() == true) && (bulb.getIsReachable() == true)) {
+								if ((deviceConfig.itemStateOnOffType == null) || (deviceConfig.itemStateOnOffType.equals(OnOffType.ON) == false)) {
+									eventPublisher.postUpdate(hueItemName, OnOffType.ON);
+									deviceConfig.itemStateOnOffType = OnOffType.ON;
+								}
+							} else { 
+								if ((deviceConfig.itemStateOnOffType == null) || (deviceConfig.itemStateOnOffType.equals(OnOffType.OFF) == false)) {
+									eventPublisher.postUpdate(hueItemName, OnOffType.OFF);
+									deviceConfig.itemStateOnOffType = OnOffType.OFF;
+								}
+							}
+							
+							if (deviceConfig.getType().equals(BindingType.brightness)) {
+								if ((bulb.getIsOn() == true) && (bulb.getIsReachable() == true)) {
+									// Only postUpdate when bulb is on, otherwise dimmer item is not retaining state and shows to max brightness value
+									PercentType newPercent = new PercentType((int)Math.round((bulb.getBrightness() * (double)100) / (double)255));
+									if ((deviceConfig.itemStatePercentType == null) || (deviceConfig.itemStatePercentType.equals(newPercent) == false)) {
+										eventPublisher.postUpdate(hueItemName, newPercent);
+										deviceConfig.itemStatePercentType = newPercent;
+									}
+								}									
+							} else if (deviceConfig.getType().equals(BindingType.rgb)) {
+								if ((bulb.getIsOn() == true) && (bulb.getIsReachable() == true)) {
+									// Only postUpdate when bulb is on, otherwise color item is not retaining state and shows to max brightness value
+									DecimalType decimalHue = new DecimalType(bulb.getHue() / (double)182);
+									PercentType percentBrightness = new PercentType((int)Math.round((bulb.getBrightness() * (double)100) / (double)255));
+									PercentType percentSaturation = new PercentType((int)Math.round((bulb.getSaturation() * (double)100) / (double)255));
+									HSBType newHsb = new HSBType(decimalHue, percentSaturation, percentBrightness);
+									if ((deviceConfig.itemStateHSBType == null) || (deviceConfig.itemStateHSBType.equals(newHsb) == false)) {
+										eventPublisher.postUpdate(hueItemName, newHsb);
+										deviceConfig.itemStateHSBType = newHsb;
+									}
+								}									
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
 	@Override
 	public void internalReceiveCommand(String itemName, Command command) {
 		super.internalReceiveCommand(itemName, command);
@@ -110,7 +188,6 @@ public class HueBinding extends AbstractBinding<HueBindingProvider> implements M
 	 */
 	private void computeCommandForItemOnBridge(Command command,
 			String itemName, HueBridge bridge) {
-
 		HueBindingConfig deviceConfig = getConfigForItemName(itemName);
 
 		if (deviceConfig == null) {
@@ -124,7 +201,7 @@ public class HueBinding extends AbstractBinding<HueBindingProvider> implements M
 		}
 
 		if (command instanceof OnOffType) {
-			bulb.setOnAtFullBrightness(OnOffType.ON.equals(command));
+			bulb.switchOn(OnOffType.ON.equals(command));
 		}
 
 		if (command instanceof HSBType) {
@@ -145,8 +222,7 @@ public class HueBinding extends AbstractBinding<HueBindingProvider> implements M
 				int resultingValue = bulb.decreaseBrightness(deviceConfig.getStepSize());
 				eventPublisher.postUpdate(itemName, new PercentType(resultingValue));
 			} else if ((command instanceof PercentType) && !(command instanceof HSBType)) {
-				bulb.setBrightness((255 / 100)
-						* ((PercentType) command).intValue());
+				bulb.setBrightness((int)Math.round((double)255 / (double)100 * ((PercentType) command).intValue()));
 			}
 		}
 
@@ -156,8 +232,7 @@ public class HueBinding extends AbstractBinding<HueBindingProvider> implements M
 			} else if (IncreaseDecreaseType.DECREASE.equals(command)) {
 				bulb.decreaseColorTemperature(deviceConfig.getStepSize());
 			} else if (command instanceof PercentType) {
-				bulb.setColorTemperature(((346 / 100) * ((PercentType) command)
-						.intValue()) + 154);
+				bulb.setColorTemperature((int)Math.round((((double)346 / (double)100) * ((PercentType) command).intValue()) + 154));
 			}
 		}
 
@@ -204,6 +279,14 @@ public class HueBinding extends AbstractBinding<HueBindingProvider> implements M
 			if(this.bridgeIP!=null) {
 				activeBridge = new HueBridge(bridgeIP, bridgeSecret);
 				activeBridge.pairBridgeIfNecessary();
+			}
+			
+			String refreshIntervalString = (String) config.get("refresh");
+			if (StringUtils.isNotBlank(refreshIntervalString)) {
+				refreshInterval = Long.parseLong(refreshIntervalString);
+				
+				// RefreshInterval is specified in openhap.cfg, therefore enable polling
+				setProperlyConfigured(true);
 			}
 		}
 

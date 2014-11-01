@@ -1,34 +1,15 @@
 /**
- * openHAB, the open Home Automation Bus.
- * Copyright (C) 2010-2013, openHAB.org <admin@openhab.org>
+ * Copyright (c) 2010-2014, openHAB.org and others.
  *
- * See the contributors.txt file in the distribution for a
- * full listing of individual contributors.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses>.
- *
- * Additional permission under GNU GPL version 3 section 7
- *
- * If you modify this Program, or any covered work, by linking or
- * combining it with Eclipse (or a modified version of that library),
- * containing parts covered by the terms of the Eclipse Public License
- * (EPL), the licensors of this Program grant you additional permission
- * to convey the resulting work.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.model.script.internal.actions;
 
 import org.eclipse.xtext.xbase.lib.Procedures.Procedure0;
+import org.eclipse.xtext.xbase.lib.Procedures.Procedure1;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -47,7 +28,9 @@ public class TimerExecutionJob implements Job {
 
 	static final private Logger logger = LoggerFactory.getLogger(TimerExecutionJob.class);
 	
-	private Procedure0 procedure;
+	private Procedure0 procedure = null;
+	private Procedure1<Object> procedure1 = null;
+	private Object	argument1 = null;
 	private TimerImpl timer;
 
 	/**
@@ -57,17 +40,34 @@ public class TimerExecutionJob implements Job {
 	 */
 	public void execute(JobExecutionContext context) throws JobExecutionException {
 		logger.debug("Executing timer '{}'", context.getJobDetail().getKey().toString());
-		procedure.apply();
+		if (procedure != null) {
+			procedure.apply();
+		} else if (procedure1 != null) {
+			procedure1.apply(argument1);
+		}
 		timer.setTerminated(true);
 	}
 
 	/**
-	 * Sets the closure for this job
+	 * Sets the 0-parameter closure for this job
 	 * 
 	 * @param procedure a closure without parameters
 	 */
 	public void setProcedure(Procedure0 procedure) {
 		this.procedure = procedure;
+	}
+
+	/**
+	 * Sets the 1-parameter closure for this job
+	 * 
+	 * @param procedure a closure with a single argument
+	 */
+	public void setProcedure1(Procedure1<Object> procedure) {
+		this.procedure1 = procedure;
+	}
+	
+	public void setArgument1(Object argument1) {
+		this.argument1 = argument1;
 	}
 
 	/** 

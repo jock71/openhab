@@ -1,35 +1,14 @@
 /**
- * 
- *  openHAB, the open Home Automation Bus.
- *  Copyright (C)  2013, Thomas Weiss <theo.weiss@gmail.com>
- * 
- *  See the contributors.txt file in the distribution for a
- *  full listing of individual contributors.
- * 
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as
- *  published by the Free Software Foundation; either version 3 of the
- *  License, or (at your option) any later version.
- * 
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- * 
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses>.
- * 
- *  Additional permission under GNU GPL version 3 section 7
- * 
- *  If you modify this Program, or any covered work, by linking or
- *  combining it with Eclipse (or a modified version of that library),
- *  containing parts covered by the terms of the Eclipse Public License
- *  (EPL), the licensors of this Program grant you additional permission
- *  to convey the resulting work.
- * 
+ * Copyright (c) 2010-2014, openHAB.org and others.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.binding.tinkerforge.internal.model.impl;
 
+import java.math.BigDecimal;
 import org.eclipse.emf.common.notify.Notification;
 
 import org.eclipse.emf.ecore.EClass;
@@ -43,6 +22,9 @@ import org.openhab.binding.tinkerforge.internal.model.TFBaseConfiguration;
 /**
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>TF Hysteresis Configuration</b></em>'.
+ * 
+ * @author Theo Weiss
+ * @since 1.3.0
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
@@ -64,7 +46,7 @@ public class TFBaseConfigurationImpl extends MinimalEObjectImpl.Container implem
    * @generated
    * @ordered
    */
-  protected static final int THRESHOLD_EDEFAULT = 0;
+  protected static final BigDecimal THRESHOLD_EDEFAULT = null;
 
   /**
    * The cached value of the '{@link #getThreshold() <em>Threshold</em>}' attribute.
@@ -74,7 +56,7 @@ public class TFBaseConfigurationImpl extends MinimalEObjectImpl.Container implem
    * @generated
    * @ordered
    */
-  protected int threshold = THRESHOLD_EDEFAULT;
+  protected BigDecimal threshold = THRESHOLD_EDEFAULT;
 
   /**
    * The default value of the '{@link #getCallbackPeriod() <em>Callback Period</em>}' attribute.
@@ -122,7 +104,7 @@ public class TFBaseConfigurationImpl extends MinimalEObjectImpl.Container implem
    * <!-- end-user-doc -->
    * @generated
    */
-  public int getThreshold()
+  public BigDecimal getThreshold()
   {
     return threshold;
   }
@@ -132,9 +114,9 @@ public class TFBaseConfigurationImpl extends MinimalEObjectImpl.Container implem
    * <!-- end-user-doc -->
    * @generated
    */
-  public void setThreshold(int newThreshold)
+  public void setThreshold(BigDecimal newThreshold)
   {
-    int oldThreshold = threshold;
+    BigDecimal oldThreshold = threshold;
     threshold = newThreshold;
     if (eNotificationRequired())
       eNotify(new ENotificationImpl(this, Notification.SET, ModelPackage.TF_BASE_CONFIGURATION__THRESHOLD, oldThreshold, threshold));
@@ -192,7 +174,7 @@ public class TFBaseConfigurationImpl extends MinimalEObjectImpl.Container implem
     switch (featureID)
     {
       case ModelPackage.TF_BASE_CONFIGURATION__THRESHOLD:
-        setThreshold((Integer)newValue);
+        setThreshold((BigDecimal)newValue);
         return;
       case ModelPackage.TF_BASE_CONFIGURATION__CALLBACK_PERIOD:
         setCallbackPeriod((Integer)newValue);
@@ -232,7 +214,7 @@ public class TFBaseConfigurationImpl extends MinimalEObjectImpl.Container implem
     switch (featureID)
     {
       case ModelPackage.TF_BASE_CONFIGURATION__THRESHOLD:
-        return threshold != THRESHOLD_EDEFAULT;
+        return THRESHOLD_EDEFAULT == null ? threshold != null : !THRESHOLD_EDEFAULT.equals(threshold);
       case ModelPackage.TF_BASE_CONFIGURATION__CALLBACK_PERIOD:
         return callbackPeriod != CALLBACK_PERIOD_EDEFAULT;
     }

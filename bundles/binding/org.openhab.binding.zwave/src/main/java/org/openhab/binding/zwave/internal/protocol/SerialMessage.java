@@ -1,32 +1,11 @@
 /**
- * openHAB, the open Home Automation Bus.
- * Copyright (C) 2010-2013, openHAB.org <admin@openhab.org>
+ * Copyright (c) 2010-2014, openHAB.org and others.
  *
- * See the contributors.txt file in the distribution for a
- * full listing of individual contributors.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses>.
- *
- * Additional permission under GNU GPL version 3 section 7
- *
- * If you modify this Program, or any covered work, by linking or
- * combining it with Eclipse (or a modified version of that library),
- * containing parts covered by the terms of the Eclipse Public License
- * (EPL), the licensors of this Program grant you additional permission
- * to convey the resulting work.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
-
 package org.openhab.binding.zwave.internal.protocol;
 
 import java.io.ByteArrayOutputStream;
@@ -38,17 +17,26 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.lang.ArrayUtils;
-import org.openhab.binding.zwave.internal.commandclass.ZWaveWakeUpCommandClass;
-import org.openhab.binding.zwave.internal.commandclass.ZWaveCommandClass.CommandClass;
+import org.openhab.binding.zwave.internal.protocol.commandclass.ZWaveCommandClass.CommandClass;
+import org.openhab.binding.zwave.internal.protocol.commandclass.ZWaveWakeUpCommandClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class represents a message which is used in serial API interface to communicate with
- * usb Z-Wave stick/
+ * This class represents a message which is used in serial API 
+ * interface to communicate with usb Z-Wave stick
+ * 
+ * A ZWave serial message frame is made up as follows
+ * Byte 0 : SOF (Start of Frame) 0x01
+ * Byte 1 : Length of frame - number of bytes to follow
+ * Byte 2 : Request (0x00) or Response (0x01)
+ * Byte 3 : Message Class (see SerialMessageClass)
+ * Byte 4+: Message Class data                             >> Message Payload
+ * Byte x : Last byte is checksum
  * 
  * @author Victor Belov
  * @author Brian Crosby
+ * @author Chris Jackson
  * @since 1.3.0
  */
 public class SerialMessage {
@@ -117,8 +105,8 @@ public class SerialMessage {
 	 * @param priority the message priority
 	 */
 	public SerialMessage(int nodeId, SerialMessageClass messageClass, SerialMessageType messageType, SerialMessageClass expectedReply, SerialMessagePriority priority) {
-		logger.debug(String.format("Creating empty message of class = %s (0x%02X), type = %s (0x%02X)", 
-				new Object[] { messageClass, messageClass.key, messageType, messageType.ordinal()}));
+		logger.debug(String.format("NODE %d: Creating empty message of class = %s (0x%02X), type = %s (0x%02X)", 
+				new Object[] { nodeId, messageClass, messageClass.key, messageType, messageType.ordinal()}));
 		this.sequenceNumber = sequence.getAndIncrement();
 		this.messageClass = messageClass;
 		this.messageType = messageType;
@@ -144,16 +132,16 @@ public class SerialMessage {
 	 * @param buffer the buffer to create the SerialMessage from.
 	 */
 	public SerialMessage(int nodeId, byte[] buffer) {
-		logger.debug("Creating new SerialMessage from buffer = " + SerialMessage.bb2hex(buffer));
+		logger.trace("NODE {}: Creating new SerialMessage from buffer = {}", nodeId, SerialMessage.bb2hex(buffer));
 		messageLength = buffer.length - 2; // buffer[1];
 		byte messageCheckSumm = calculateChecksum(buffer);
 		byte messageCheckSummReceived = buffer[messageLength+1];
-		logger.debug(String.format("Message checksum calculated = 0x%02X, received = 0x%02X", messageCheckSumm, messageCheckSummReceived));
+		logger.trace(String.format("NODE %d: Message checksum calculated = 0x%02X, received = 0x%02X", nodeId, messageCheckSumm, messageCheckSummReceived));
 		if (messageCheckSumm == messageCheckSummReceived) {
-			logger.trace("Checksum matched");
+			logger.trace("NODE {}: Checksum matched", nodeId);
 			isValid = true;
 		} else {
-			logger.trace("Checksum error");
+			logger.trace("NODE {}: Checksum error", nodeId);
 			isValid = false;
 			return;
 		}
@@ -161,8 +149,7 @@ public class SerialMessage {
 		this.messageClass = SerialMessageClass.getMessageClass(buffer[3] & 0xFF);
 		this.messagePayload = ArrayUtils.subarray(buffer, 4, messageLength + 1);
 		this.messageNode = nodeId;
-		logger.debug("Message Node ID = " + getMessageNode());
-		logger.debug("Message payload = " + SerialMessage.bb2hex(messagePayload));
+		logger.trace("NODE {}: Message payload = {}", getMessageNode(), SerialMessage.bb2hex(messagePayload));
 	}
 
     /**
@@ -199,9 +186,9 @@ public class SerialMessage {
 	 */
 	@Override
 	public String toString() {
-		return String.format("Message: class = %s (0x%02X), type = %s (0x%02X), buffer = %s", 
+		return String.format("Message: class = %s (0x%02X), type = %s (0x%02X), payload = %s", 
 				new Object[] { messageClass, messageClass.key, messageType, messageType.ordinal(),
-				SerialMessage.bb2hex(this.getMessageBuffer()) });
+				SerialMessage.bb2hex(this.getMessagePayload()) });
 	};
 	
 	/**
@@ -426,14 +413,21 @@ public class SerialMessage {
 		SerialApiSetTimeouts(0x06,"SerialApiSetTimeouts"),									// Set Serial API timeouts
 		SerialApiGetCapabilities(0x07,"SerialApiGetCapabilities"),							// Request Serial API capabilities
 		SerialApiSoftReset(0x08,"SerialApiSoftReset"),										// Soft reset. Restarts Z-Wave chip
+		RfReceiveMode(0x10,"RfReceiveMode"),												// Power down the RF section of the stick
+		SetSleepMode(0x11,"SetSleepMode"),													// Set the CPU into sleep mode
 		SendNodeInfo(0x12,"SendNodeInfo"),													// Send Node Information Frame of the stick
 		SendData(0x13,"SendData"),															// Send data.
+		SendDataMulti(0x14, "SendDataMulti"),
 		GetVersion(0x15,"GetVersion"),														// Request controller hardware version
+		SendDataAbort(0x16,"SendDataAbort"),												// Abort Send data.
 		RfPowerLevelSet(0x17,"RfPowerLevelSet"),											// Set RF Power level
+		SendDataMeta(0x18, "SendDataMeta"),
 		GetRandom(0x1c,"GetRandom"),														// ???
 		MemoryGetId(0x20,"MemoryGetId"),													// ???
 		MemoryGetByte(0x21,"MemoryGetByte"),												// Get a byte of memory.
+		MemoryPutByte(0x22, "MemoryPutByte"),
 		ReadMemory(0x23,"ReadMemory"),														// Read memory.
+		WriteMemory(0x24, "WriteMemory"),
 		SetLearnNodeState(0x40,"SetLearnNodeState"),    									// ???
 		IdentifyNode(0x41,"IdentifyNode"),    												// Get protocol info (baud rate, listening, etc.) for a given node
 		SetDefault(0x42,"SetDefault"),    													// Reset controller and node info to default (original) values
@@ -455,12 +449,14 @@ public class SerialMessage {
 		SetSucNodeID(0x54,"SetSucNodeID"),													// Identify a Static Update Controller node id
 		DeleteSUCReturnRoute(0x55,"DeleteSUCReturnRoute"),									// Remove return routes to the SUC
 		GetSucNodeId(0x56,"GetSucNodeId"),													// Try to retrieve a Static Update Controller node id (zero if no SUC present)
+		SendSucId(0x57, "SendSucId"),
 		RequestNodeNeighborUpdateOptions(0x5a,"RequestNodeNeighborUpdateOptions"),   		// Allow options for request node neighbor update
 		RequestNodeInfo(0x60,"RequestNodeInfo"),											// Get info (supported command classes) for the specified node
 		RemoveFailedNodeID(0x61,"RemoveFailedNodeID"),										// Mark a specified node id as failed
 		IsFailedNodeID(0x62,"IsFailedNodeID"),												// Check to see if a specified node has failed
 		ReplaceFailedNode(0x63,"ReplaceFailedNode"),										// Remove a failed node from the controller's list (?)
 		GetRoutingInfo(0x80,"GetRoutingInfo"),												// Get a specified node's neighbor information from the controller
+		LockRoute(0x90, "LockRoute"),
 		SerialApiSlaveNodeInfo(0xA0,"SerialApiSlaveNodeInfo"),								// Set application virtual slave node information
 		ApplicationSlaveCommandHandler(0xA1,"ApplicationSlaveCommandHandler"),				// Slave command handler
 		SendSlaveNodeInfo(0xA2,"ApplicationSlaveCommandHandler"),							// Send a slave node information frame
@@ -468,6 +464,13 @@ public class SerialMessage {
 		SetSlaveLearnMode(0xA4,"SetSlaveLearnMode"),										// Enter slave learn mode
 		GetVirtualNodes(0xA5,"GetVirtualNodes"),											// Return all virtual nodes
 		IsVirtualNode(0xA6,"IsVirtualNode"),												// Virtual node test
+		WatchDogEnable(0xB6, "WatchDogEnable"),
+		WatchDogDisable(0xB7, "WatchDogDisable"),
+		WatchDogKick(0xB6, "WatchDogKick"),
+		RfPowerLevelGet(0xBA,"RfPowerLevelSet"),											// Get RF Power level
+		GetLibraryType(0xBD, "GetLibraryType"),												// Gets the type of ZWave library on the stick
+		SendTestFrame(0xBE, "SendTestFrame"),												// Send a test frame to a node
+		GetProtocolStatus(0xBF, "GetProtocolStatus"),
 		SetPromiscuousMode(0xD0,"SetPromiscuousMode"),										// Set controller into promiscuous mode to listen to all frames
 		PromiscuousApplicationCommandHandler(0xD1,"PromiscuousApplicationCommandHandler");
 		
@@ -521,21 +524,18 @@ public class SerialMessage {
 		}
 	}
 
-	
 	/**
 	 * Comparator Class. Compares two serial messages with each other based on
-	 * node status (awake / sleep), priority and sequence number.
-	 * 
+	 * node status (awake / sleep), priority and sequence number. 
 	 * @author Jan-Willem Spuij
 	 * @since 1.3.0
 	 */
 	public static class SerialMessageComparator implements Comparator<SerialMessage> {
 
 		private final ZWaveController controller;
-
+		
 		/**
-		 * Constructor. Creates a new instance of the SerialMessageComparator
-		 * class.
+		 * Constructor. Creates a new instance of the SerialMessageComparator class.
 		 * @param controller the {@link ZWaveController to use}
 		 */
 		public SerialMessageComparator(ZWaveController controller) {
@@ -543,8 +543,8 @@ public class SerialMessage {
 		}
 
 		/**
-		 * Compares a serial message to another serial message. Used by the
-		 * priority queue to order messages.
+		 * Compares a serial message to another serial message.
+		 * Used by the priority queue to order messages.
 		 * @param arg0 the first serial message to compare the other to.
 		 * @param arg1 the other serial message to compare the first one to.
 		 */
@@ -555,55 +555,54 @@ public class SerialMessage {
 			boolean arg0Listening = true;
 			boolean arg1Awake = false;
 			boolean arg1Listening = true;
-
-			if ((arg0.getMessageClass() == SerialMessageClass.RequestNodeInfo || arg0.getMessageClass() == SerialMessageClass.SendData)) {
+			
+			if ((arg0.getMessageClass() == SerialMessageClass.RequestNodeInfo ||
+					arg0.getMessageClass() == SerialMessageClass.SendData)) {
 				ZWaveNode node = this.controller.getNode(arg0.getMessageNode());
-
-				if (node != null && !node.isListening()) {
+				
+				if (node != null && !node.isListening() && !node.isFrequentlyListening()) {
 					arg0Listening = false;
-					ZWaveWakeUpCommandClass wakeUpCommandClass = (ZWaveWakeUpCommandClass) node
-							.getCommandClass(CommandClass.WAKE_UP);
-
+					ZWaveWakeUpCommandClass wakeUpCommandClass = (ZWaveWakeUpCommandClass)node.getCommandClass(CommandClass.WAKE_UP);
+					
 					if (wakeUpCommandClass != null && wakeUpCommandClass.isAwake())
 						arg0Awake = true;
 				}
 			}
-
-			if ((arg1.getMessageClass() == SerialMessageClass.RequestNodeInfo || arg1.getMessageClass() == SerialMessageClass.SendData)) {
+			
+			if ((arg1.getMessageClass() == SerialMessageClass.RequestNodeInfo ||
+					arg1.getMessageClass() == SerialMessageClass.SendData)) {
 				ZWaveNode node = this.controller.getNode(arg1.getMessageNode());
-
-				if (node != null && !node.isListening()) {
+				
+				if (node != null && !node.isListening() && !node.isFrequentlyListening()) {
 					arg1Listening = false;
-					ZWaveWakeUpCommandClass wakeUpCommandClass = (ZWaveWakeUpCommandClass) node
-							.getCommandClass(CommandClass.WAKE_UP);
-
+					ZWaveWakeUpCommandClass wakeUpCommandClass = (ZWaveWakeUpCommandClass)node.getCommandClass(CommandClass.WAKE_UP);
+					
 					if (wakeUpCommandClass != null && wakeUpCommandClass.isAwake())
 						arg1Awake = true;
 				}
 			}
-
-			// messages for awake nodes get priority over
+			
+			// messages for awake nodes get priority over 
 			// messages for sleeping (or listening) nodes.
 			if (arg0Awake && !arg1Awake)
 				return -1;
 			else if (arg1Awake && !arg0Awake)
 				return 1;
-
+			
 			// messages for listening nodes get priority over
 			// non listening nodes.
 			if (arg0Listening && !arg1Listening)
 				return -1;
 			else if (arg1Listening && !arg0Listening)
 				return 1;
-
+			
 			int res = arg0.priority.compareTo(arg1.priority);
-
+			
 			if (res == 0 && arg0 != arg1)
-				res = (arg0.sequenceNumber < arg1.sequenceNumber ? -1 : 1);
-
+			   res = (arg0.sequenceNumber < arg1.sequenceNumber ? -1 : 1);
+			
 			return res;
 		}
+
 	}
-
-
 }

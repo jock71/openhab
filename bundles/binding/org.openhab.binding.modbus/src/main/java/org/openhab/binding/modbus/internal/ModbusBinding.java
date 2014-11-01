@@ -1,30 +1,10 @@
 /**
- * openHAB, the open Home Automation Bus.
- * Copyright (C) 2010-2013, openHAB.org <admin@openhab.org>
+ * Copyright (c) 2010-2014, openHAB.org and others.
  *
- * See the contributors.txt file in the distribution for a
- * full listing of individual contributors.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses>.
- *
- * Additional permission under GNU GPL version 3 section 7
- *
- * If you modify this Program, or any covered work, by linking or
- * combining it with Eclipse (or a modified version of that library),
- * containing parts covered by the terms of the Eclipse Public License
- * (EPL), the licensors of this Program grant you additional permission
- * to convey the resulting work.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.openhab.binding.modbus.internal;
 
@@ -36,6 +16,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import net.wimpi.modbus.procimg.InputRegister;
 import net.wimpi.modbus.util.BitVector;
@@ -72,7 +55,7 @@ public class ModbusBinding extends AbstractActiveBinding<ModbusBindingProvider> 
 	private static final String SERIAL_PREFIX = "serial";
 
 	private static final Pattern EXTRACT_MODBUS_CONFIG_PATTERN =
-		Pattern.compile("^("+TCP_PREFIX+"|"+SERIAL_PREFIX+"|)\\.(.*?)\\.(connection|id|pollInterval|start|length|type)$");
+		Pattern.compile("^("+TCP_PREFIX+"|"+SERIAL_PREFIX+"|)\\.(.*?)\\.(connection|id|pollInterval|start|length|type|valuetype)$");
 
 	/** Stores instances of all the slaves defined in cfg file */
 	private static Map<String, ModbusSlave> modbusSlaves = new ConcurrentHashMap<String, ModbusSlave>();
@@ -125,20 +108,60 @@ public class ModbusBinding extends AbstractActiveBinding<ModbusBindingProvider> 
 			if (provider.providesBindingFor(itemName)) {
 				ModbusBindingConfig config = provider.getConfig(itemName);
 				if (config.slaveName.equals(slaveName)) {
-					InputRegister value = registers[config.readRegister];
+					String slaveValueType = modbusSlaves.get(slaveName).getValueType();
+
+					State newState = extractStateFromRegisters(registers, config.readRegister, slaveValueType);
 					if (config.getItem() instanceof SwitchItem) {
-						if (value.getValue() == 0 && (provider.getConfig(itemName).getItemState() != OnOffType.OFF)) {
-							eventPublisher.postUpdate(itemName, OnOffType.OFF);
-						} else if (value.getValue() != 0 && (provider.getConfig(itemName).getItemState() != OnOffType.ON)) {
-							eventPublisher.postUpdate(itemName, OnOffType.ON);							
-						}
-					} else {
-					DecimalType newState = new DecimalType(value.getValue());
-					if (!newState.equals(provider.getConfig(itemName).getItemState()))
-						eventPublisher.postUpdate(itemName, newState);
+						newState = newState.equals(DecimalType.ZERO) ? OnOffType.OFF : OnOffType.ON;
 					}
+
+					State currentState = config.getItemState();
+					if (! newState.equals(currentState))
+						eventPublisher.postUpdate(itemName, newState);
 				}
 			}
+		}
+	}
+
+	private DecimalType extractStateFromRegisters(InputRegister[] registers, int index, String type) {
+		if (type.equals(ModbusBindingProvider.VALUE_TYPE_BIT)) {
+			return new DecimalType((registers[index / 16].toUnsignedShort() >> (index % 16)) & 1);
+		}
+		else if (type.equals(ModbusBindingProvider.VALUE_TYPE_INT8)) {
+			return new DecimalType(registers[index / 2].toBytes()[1 - (index % 2)]);
+		}
+		else if (type.equals(ModbusBindingProvider.VALUE_TYPE_UINT8)) {
+			return new DecimalType((registers[index / 2].toUnsignedShort() >> (8 * (index % 2))) & 0xff);
+		}
+		else if (type.equals(ModbusBindingProvider.VALUE_TYPE_INT16)) {
+			ByteBuffer buff = ByteBuffer.allocate(2);
+			buff.put(registers[index].toBytes());
+			return new DecimalType(buff.order(ByteOrder.BIG_ENDIAN).getShort(0));
+		}
+		else if (type.equals(ModbusBindingProvider.VALUE_TYPE_UINT16)) {
+			return new DecimalType(registers[index].toUnsignedShort());
+		}
+		else if (type.equals(ModbusBindingProvider.VALUE_TYPE_INT32)) {
+			ByteBuffer buff = ByteBuffer.allocate(4);
+			buff.put(registers[index * 2 + 0].toBytes());
+			buff.put(registers[index * 2 + 1].toBytes());
+			return new DecimalType(buff.order(ByteOrder.BIG_ENDIAN).getInt(0));
+		}
+		else if (type.equals(ModbusBindingProvider.VALUE_TYPE_UINT32)) {
+			ByteBuffer buff = ByteBuffer.allocate(8);
+			buff.position(4);
+			buff.put(registers[index * 2 + 0].toBytes());
+			buff.put(registers[index * 2 + 1].toBytes());
+			return new DecimalType(buff.order(ByteOrder.BIG_ENDIAN).getLong(0));
+		}
+		else if (type.equals(ModbusBindingProvider.VALUE_TYPE_FLOAT32)) {
+			ByteBuffer buff = ByteBuffer.allocate(4);
+			buff.put(registers[index * 2 + 0].toBytes());
+			buff.put(registers[index * 2 + 1].toBytes());
+			return new DecimalType(buff.order(ByteOrder.BIG_ENDIAN).getFloat(0));
+		}
+		else {
+			throw new IllegalArgumentException();
 		}
 	}
 
@@ -272,6 +295,12 @@ public class ModbusBinding extends AbstractActiveBinding<ModbusBindingProvider> 
 						modbusSlave.setType(value);
 					} else {
 						throw new ConfigurationException(configKey, "the given slave type '" + value + "' is invalid");
+					}
+				} else if ("valuetype".equals(configKey)) {
+					if (ArrayUtils.contains(ModbusBindingProvider.VALUE_TYPES, value)) {
+						modbusSlave.setValueType(value);
+					} else {
+						throw new ConfigurationException(configKey, "the given value type '" + value + "' is invalid");
 					}
 				} else {
 					throw new ConfigurationException(configKey,

@@ -1,31 +1,3 @@
-/**
- * openHAB, the open Home Automation Bus.
- * Copyright (C) 2010-2013, openHAB.org <admin@openhab.org>
- *
- * See the contributors.txt file in the distribution for a
- * full listing of individual contributors.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses>.
- *
- * Additional permission under GNU GPL version 3 section 7
- *
- * If you modify this Program, or any covered work, by linking or
- * combining it with Eclipse (or a modified version of that library),
- * containing parts covered by the terms of the Eclipse Public License
- * (EPL), the licensors of this Program grant you additional permission
- * to convey the resulting work.
- */
 package org.openhab.binding.urtsi.internal
 
 import java.util.regex.Pattern
@@ -47,10 +19,9 @@ import static org.openhab.binding.urtsi.internal.UrtsiGenericBindingProvider.*
  */
 class UrtsiGenericBindingProvider extends AbstractGenericBindingProvider implements UrtsiBindingProvider {
 	
-	
 	static val Logger logger = LoggerFactory::getLogger(typeof(UrtsiGenericBindingProvider))
 
-	static val Pattern CONFIG_BINDING_PATTERN = Pattern::compile("(.*?):([0-9]*)")
+	static val Pattern CONFIG_BINDING_PATTERN = Pattern::compile("(.*?):([0-9]*)((:)?([0-9])?)")
 
 	override getBindingType() {
 		"urtsi"
@@ -102,19 +73,40 @@ class UrtsiGenericBindingProvider extends AbstractGenericBindingProvider impleme
 		val matcher = CONFIG_BINDING_PATTERN.matcher(bindingConfig)
 		
 		if (!matcher.matches) {
-			throw new BindingConfigParseException("bindingConfig '" + bindingConfig + "' doesn't contain a valid Urtsii-binding-configuration. A valid configuration is matched by the RegExp '" + CONFIG_BINDING_PATTERN.pattern() + "'")
+			bombOut(bindingConfig);
 		}
 		matcher.reset
 		if (matcher.find) {
-			val urtsiConfig = new UrtsiItemConfiguration(matcher.group(1), Integer::valueOf(matcher.group(2)))
+			var address = 1;
+			var channel = 1;
+			if (matcher.group(5) != null) { // both address and channel are specified
+				channel = Integer::valueOf(matcher.group(5));
+				if (matcher.group(2) == null) {
+				   bombOut(bindingConfig);
+				}
+				address = Integer::valueOf(matcher.group(2));
+			} else { // just channel specified
+				if (matcher.group(2) == null) {
+				   bombOut(bindingConfig);
+				}
+				channel = Integer::valueOf(matcher.group(2));
+			}
+			val urtsiConfig = new UrtsiItemConfiguration(matcher.group(1), channel, address);
 			addBindingConfig(item, urtsiConfig)
-
 		} else {
-			throw new BindingConfigParseException("bindingConfig '" + bindingConfig + "' doesn't contain a valid Urtsii-binding-configuration. A valid configuration is matched by the RegExp '" + CONFIG_BINDING_PATTERN.pattern() + "'")
+			bombOut(bindingConfig);
 		}
 
 	}
-	
+	/**
+	* Shorthand for throwing lenghty exception
+	*/
+	def private void bombOut(String config) throws BindingConfigParseException {
+		throw new BindingConfigParseException("bindingConfig '" + config +
+			"' doesn't contain a valid Urtsii-binding-configuration. A valid configuration is matched by the RegExp '" +
+			CONFIG_BINDING_PATTERN.pattern() + "'");		
+	}
+
 	/**
 	 * Returns the device id which is associated to the given item.
 	 */
@@ -128,6 +120,13 @@ class UrtsiGenericBindingProvider extends AbstractGenericBindingProvider impleme
 	 */
 	override getChannel(String itemName) {
 		itemName.itemConfiguration?.channel
+	}
+
+	/**
+	 * Returns the urtsi device address which is associated to the given item.
+	 */
+	override getAddress(String itemName) {
+		itemName.itemConfiguration?.address
 	}
 	
 	/**
