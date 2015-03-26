@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry exported="true" kind="lib" path="lib/org.scala-lang.scala-actors_2.11.4.v20141023-110636-d783face36.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/org.scala-lang.scala-library_2.11.4.v20141023-110636-d783face36.jar" sourcepath="src-scala/org.scala-lang.scala-library.source_2.11.4.v20141023-110636-d783face36.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/org.scala-lang.scala-reflect_2.11.4.v20141023-110636-d783face36.jar"/>
+	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
+	<classpathentry kind="src" output="target/classes" path="src/main/java"/>
+	<classpathentry kind="src" path="src-akka"/>
+	<classpathentry kind="src" path="src-scala"/>
+	<classpathentry excluding="**" kind="src" output="target/classes" path="src/main/resources"/>
+	<classpathentry kind="lib" path="lib/akka-actor_2.11-2.3.8.jar" sourcepath="src-akka/akka-actor_2.11-2.3.8-sources.jar"/>
+	<classpathentry kind="lib" path="lib/config-1.2.1.jar"/>
+	<classpathentry kind="lib" path="lib/akka-osgi_2.11-2.3.8.jar"/>
+	<classpathentry kind="output" path="target/classes"/>
+</classpath>
