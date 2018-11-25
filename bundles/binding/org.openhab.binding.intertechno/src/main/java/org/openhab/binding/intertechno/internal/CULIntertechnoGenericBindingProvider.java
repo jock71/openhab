@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2014, openHAB.org and others.
+ * Copyright (c) 2010-2016 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -11,6 +11,7 @@ package org.openhab.binding.intertechno.internal;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.intertechno.CULIntertechnoBindingProvider;
 import org.openhab.binding.intertechno.IntertechnoBindingConfig;
 import org.openhab.binding.intertechno.internal.parser.AddressParserFactory;
@@ -22,68 +23,76 @@ import org.openhab.model.item.binding.BindingConfigParseException;
 
 /**
  * This class is responsible for parsing the binding configuration.
- * 
+ *
  * @author Till Klocke
  * @since 1.4.0
  */
-public class CULIntertechnoGenericBindingProvider extends
-		AbstractGenericBindingProvider implements CULIntertechnoBindingProvider {
+public class CULIntertechnoGenericBindingProvider extends AbstractGenericBindingProvider
+        implements CULIntertechnoBindingProvider {
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public String getBindingType() {
-		return "culintertechno";
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getBindingType() {
+        return "culintertechno";
+    }
 
-	/**
-	 * @{inheritDoc
-	 */
-	@Override
-	public void validateItemType(Item item, String bindingConfig)
-			throws BindingConfigParseException {
-		if (!(item instanceof SwitchItem)) {
-			throw new BindingConfigParseException(
-					"item '"
-							+ item.getName()
-							+ "' is of type '"
-							+ item.getClass().getSimpleName()
-							+ "', only SwitchItems are allowed - please check your *.items configuration");
-		}
-	}
+    /**
+     * @{inheritDoc
+     */
+    @Override
+    public void validateItemType(Item item, String bindingConfig) throws BindingConfigParseException {
+        if (!(item instanceof SwitchItem)) {
+            throw new BindingConfigParseException(
+                    "item '" + item.getName() + "' is of type '" + item.getClass().getSimpleName()
+                            + "', only SwitchItems are allowed - please check your *.items configuration");
+        }
+    }
 
-	/**
-	 * config of style
-	 * <code>{{@literal intertechno="type=<classic|fls|rev>;group=<group>;address=<address>"}}</code><br>
-	 * 
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void processBindingConfiguration(String context, Item item,
-			String bindingConfig) throws BindingConfigParseException {
-		super.processBindingConfiguration(context, item, bindingConfig);
+    /**
+     * config of style
+     * <code>{{@literal culintertechno="type=<classic|fls|rev>;group=<group>;address=<address>"}}</code><br>
+     * 
+     * {@inheritDoc}
+     */
+    @Override
+    public void processBindingConfiguration(String context, Item item, String bindingConfig)
+            throws BindingConfigParseException {
+        super.processBindingConfiguration(context, item, bindingConfig);
 
-		String[] configParts = bindingConfig.split(";");
-		String type = configParts[0].split("=")[1];
-		List<String> addressParts = new ArrayList<String>(3);
-		for (int i = 1; i < configParts.length; i++) {
-			addressParts.add(configParts[i].split("=")[1]);
-		}
-		IntertechnoAddressParser parser = AddressParserFactory.getParser(type);
-		String address = parser.parseAddress(addressParts
-				.toArray(new String[addressParts.size()]));
-		String commandOn = parser.getCommandValueON();
-		String commandOff = parser.getCOmmandValueOFF();
+        String[] configParts = bindingConfig.split(";");
+        String type = "";
+        List<String> params = new ArrayList<String>();
 
-		IntertechnoBindingConfig config = new IntertechnoBindingConfig(address,
-				commandOn, commandOff);
+        // extract the value of "type" parameter and put all other into the params array
+        for (int i = 0; i < configParts.length; i++) {
+            String paramName = configParts[i].split("=")[0].toLowerCase();
 
-		addBindingConfig(item, config);
-	}
+            if (paramName.equals("type")) {
+                type = configParts[i].split("=")[1];
+            } else {
+                params.add(configParts[i]);
+            }
+        }
 
-	@Override
-	public IntertechnoBindingConfig getConfigForItemName(String itemName) {
-		return (IntertechnoBindingConfig) bindingConfigs.get(itemName);
-	}
+        if (StringUtils.isBlank(type)) {
+            throw new BindingConfigParseException("'type' is missing in configuration!");
+        }
+
+        IntertechnoAddressParser parser = AddressParserFactory.getParser(type);
+        parser.parseConfig(params);
+        String commandOn = parser.getCommandON();
+        String commandOff = parser.getCommandOFF();
+
+        IntertechnoBindingConfig config = new IntertechnoBindingConfig(commandOn, commandOff);
+
+        addBindingConfig(item, config);
+    }
+
+    @Override
+    public IntertechnoBindingConfig getConfigForItemName(String itemName) {
+        return (IntertechnoBindingConfig) bindingConfigs.get(itemName);
+    }
 
 }

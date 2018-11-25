@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2014, openHAB.org and others.
+ * Copyright (c) 2010-2017 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -14,6 +14,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.Dictionary;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,169 +33,171 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The RefreshService polls all configured CupsSensors with a configurable
- * interval and post all values on the internal event bus. The interval is 1
- * minute by default and can be changed via openhab.cfg.
- * 
+ * The RefreshService polls all configured Cups servers with a configurable
+ * interval and posts all values on the internal event bus. The interval is 1
+ * minute by default.
+ *
  * @author Tobias Bräutigam
  * @since 1.1.0
  */
-public class CupsBinding extends AbstractActiveBinding<CupsBindingProvider> implements ManagedService {
+public class CupsBinding extends AbstractActiveBinding<CupsBindingProvider>implements ManagedService {
 
-	private static final Logger logger = LoggerFactory.getLogger(CupsBinding.class);
-	
-	private static final Pattern IP_PATTERN = Pattern.compile("[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}");
+    private static final Logger logger = LoggerFactory.getLogger(CupsBinding.class);
+    private static final Pattern IP_PATTERN = Pattern.compile("[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}");
+    private CupsClient client;
 
-	private CupsClient client;
+    /** the ip address to use for connecting to the Cups server */
+    private String host = "localhost";
+    private String ip;
 
-	/** the ip address to use for connecting to the Cups server */
-	private String host = "localhost";
-	private String ip;
+    /** the port to use for connecting to the Cups server (optional, defaults to 631) */
+    private int port = 631;
 
-	/** the port to use for connecting to the Cups server (optional, defaults to 631) */
-	private int port = 631;
+    /**
+     * the refresh interval which is used to poll values from the Cups server
+     * (optional, defaults to 60000ms)
+     */
+    private long refreshInterval = 60000;
 
-	/**
-	 * the refresh interval which is used to poll values from the Cups server
-	 * (optional, defaults to 60000ms)
-	 */
-	private long refreshInterval = 60000;
+    @Override
+    protected String getName() {
+        return "Cups Refresh Service";
+    }
 
-	@Override
-	protected String getName() {
-		return "Cups Refresh Service";
-	}
+    @Override
+    protected long getRefreshInterval() {
+        return refreshInterval;
+    }
 
-	@Override
-	protected long getRefreshInterval() {
-		return refreshInterval;
-	}
+    /**
+     * Create a new {@link CupsClient} with the given <code>host</code> and
+     * <code>port</code>
+     *
+     * @param host
+     * @param port
+     */
+    private void connect(String host, int port) {
+        if (StringUtils.isNotBlank(host) && port > 0) {
+            try {
+                client = new CupsClient(host, port);
+                logger.debug("Connection to CupsServer {} established", host);
+            } catch (Exception e) {
+                logger.warn("Couldn't connect to CupsServer. [Host '{}' Port '{}']: ", host, port,
+                        e.getLocalizedMessage());
+            }
+        } else {
+            logger.warn(
+                    "Couldn't connect to CupsServer because of missing connection parameters. [Host '{}' Port '{}']",
+                    host, port);
+        }
+    }
 
-	/**
-	 * Create a new {@link CupsClient} with the given <code>ip</code> and
-	 * <code>port</code>
-	 * 
-	 * @param host
-	 * @param port
-	 */
-	private void connect(String host, int port) {
-		if (host != null && StringUtils.isNotBlank(host) && port > 0) {
-			try {
-				client = new CupsClient(host,port);
-				logger.debug("Connection to CupsServer {} established",host);
-			} catch (Exception e) {
-				logger.error("Couldn't connect to CupsServer [Host '" + host + "' Port '" + port + "']: ", e.getLocalizedMessage());
-			}
-		} else {
-			logger.warn("Couldn't connect to CupsServer because of missing connection parameters [Host '{}' Port '{}'].", host, port);
-		}
-	}
+    /**
+     * @{inheritDoc}
+     */
+    @Override
+    public void execute() {
+        if (client == null) {
+            logger.warn("CupsClient is null => refresh cycle aborted!");
+            return;
+        }
 
-	/**
-	 * @{inheritDoc}
-	 */
-	@Override
-	public void execute() {
-		if (client != null) {
-			for (CupsBindingProvider provider : providers) {
-				for (String itemName : provider.getItemNames()) {
-					
-					String printerName = provider.getPrinterName(itemName);
-					WhichJobsEnum whichJobs = provider.getWhichJobs(itemName);
+        for (CupsBindingProvider provider : providers) {
+            for (String itemName : provider.getItemNames()) {
+                String printerName = provider.getPrinterName(itemName);
+                WhichJobsEnum whichJobs = provider.getWhichJobs(itemName);
 
-					if (printerName == null) {
-						logger.warn("printerName isn't configured properly "
-							+ "for the given itemName [itemName={}, printerName={}] => querying bus for values aborted!",
-							new Object[] { itemName, printerName });
-						continue;
-					}
+                if (printerName == null) {
+                    logger.warn("printerName isn't defined for itemName '{}'"
+                                + " => querying bus for values aborted!", itemName);
+                    continue;
+                }
 
-					State value = UnDefType.UNDEF;
+                State value = UnDefType.UNDEF;
 
-					try {
-						URL printerUrl=null;
-						CupsPrinter printer=null;
-						try {
-							printerUrl = new URL(printerName);
-						}
-						catch (MalformedURLException e) {
-							try {
-								printerUrl = new URL("http://"+ip+":"+port+"/printers/"+printerName);
-							}
-							catch (MalformedURLException e1) {
-								logger.error("wrong printer address {}",printerName);
-							}
-						}
-						if (printerUrl==null) {
-							// try to find printer by name
-							for (CupsPrinter pr : client.getPrinters()) {
-								if (pr.getName().equalsIgnoreCase(printerName)) {
-									printer = pr;
-									break;
-								}
-							}
-						}
-						else {
-							printer = client.getPrinter(printerUrl);
-						}
-						if (printer!=null) {
-							value = new DecimalType(client.getJobs(printer, whichJobs, "", false).size());
-							logger.debug("Found printer {}#{} with value {}", new Object[] {printerUrl, whichJobs, value});
-						} else {
-							logger.info("there is no printer for path {}",
-									printerUrl);
-						}						
-					} catch (IOException ioe) {
-						logger.error(
-								"couldn't establish network connection while reading '"	+ printerName + "'", ioe);
-					} catch (Exception e) {
-						logger.error(
-								"couldn't get printer '"	+ printerName + "' from cups server", e);
-					} finally {
-						eventPublisher.postUpdate(itemName, value);
-					}
-				}
-			}
-		} else {
-			logger.warn("CupsClient is null => refresh cycle aborted!");
-		}
-	}
+                try {
+                    URL printerUrl = null;
+                    CupsPrinter printer = null;
+                    try {
+                        printerUrl = new URL(printerName);
+                    } catch (MalformedURLException e) {
+                        try {
+                            printerUrl = new URL("http://" + host + ":" + port + "/printers/" + printerName);
+                        } catch (MalformedURLException e1) {
+                            logger.warn("Failed to construct URL for printer name: {}", printerName);
+                        }
+                    }
+                    if (printerUrl == null) {
+                        // try to find printer by name
+                        for (CupsPrinter pr : client.getPrinters()) {
+                            if (pr.getName().equalsIgnoreCase(printerName)) {
+                                printer = pr;
+                                break;
+                            }
+                        }
+                    } else {
+                        printer = client.getPrinter(printerUrl);
+                    }
+                    if (printer != null) {
+                        value = new DecimalType(client.getJobs(printer, whichJobs, "", false).size());
+                        logger.debug("Found printer {}#{} with value {}", printerUrl, whichJobs, value);
+                    } else {
+                        logger.info("There is no printer for path {}", printerUrl);
+                    }
+                } catch (IOException ioe) {
+                    logger.warn("Couldn't establish network connection for printer '{}'", printerName, ioe);
+                } catch (Exception e) {
+                    logger.error("Couldn't get printer '{}' from cups server", printerName, e);
+                } finally {
+                    eventPublisher.postUpdate(itemName, value);
+                }
+            }
+        }
+    }
 
-	@SuppressWarnings("rawtypes")
-	public void updated(Dictionary config) throws ConfigurationException {
+    protected void addBindingProvider(CupsBindingProvider bindingProvider) {
+        super.addBindingProvider(bindingProvider);
+    }
 
-		if (config != null) {
-			host = (String) config.get("host");
-			Matcher matcher = IP_PATTERN.matcher(host);
-			if (!matcher.matches()) {
-				try {
-					InetAddress address = InetAddress.getByName(host);
-					ip = address.getHostAddress();
-				} catch (UnknownHostException e) {
-					throw new ConfigurationException("host", "unknown host '" + host + "'!");
-				}
-			} else {
-				// host should contain an IP address
-				ip = host;
-			}
+    protected void removeBindingProvider(CupsBindingProvider bindingProvider) {
+        super.removeBindingProvider(bindingProvider);
+    }
 
-			String portString = (String) config.get("port");
-			if (StringUtils.isNotBlank(portString)) {
-				port = Integer.parseInt(portString);
-			}
+    @Override
+    @SuppressWarnings("rawtypes")
+    public void updated(Dictionary config) throws ConfigurationException {
+        if (config == null) {
+            return;
+        }
 
-			String refreshIntervalString = (String) config.get("refresh");
-			if (StringUtils.isNotBlank(refreshIntervalString)) {
-				refreshInterval = Long.parseLong(refreshIntervalString);
-			}
+        host = Objects.toString(config.get("host"), null);
+        Matcher matcher = IP_PATTERN.matcher(host);
+        if (!matcher.matches()) {
+            try {
+                InetAddress address = InetAddress.getByName(host);
+                ip = address.getHostAddress();
+            } catch (UnknownHostException e) {
+                throw new ConfigurationException("host", "unknown host '" + host + "'!");
+            }
+        } else {
+            // host should contain an IP address
+            ip = host;
+        }
 
-			// there is a valid Cups-configuration, so connect to the Cups
-			// server ...
-			connect(ip, port);
+        String portString = Objects.toString(config.get("port"), null);
+        if (StringUtils.isNotBlank(portString)) {
+            port = Integer.parseInt(portString);
+        }
 
-			setProperlyConfigured(true);
-		}
+        String refreshIntervalString = Objects.toString(config.get("refresh"), null);
+        if (StringUtils.isNotBlank(refreshIntervalString)) {
+            refreshInterval = Long.parseLong(refreshIntervalString);
+        }
 
-	}
+        // there is a valid Cups configuration, so connect to the Cups
+        // server ...
+        connect(ip, port);
 
+        setProperlyConfigured(true);
+    }
 }

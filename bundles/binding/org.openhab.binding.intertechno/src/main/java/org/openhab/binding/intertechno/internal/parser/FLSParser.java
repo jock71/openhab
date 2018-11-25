@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2014, openHAB.org and others.
+ * Copyright (c) 2010-2016 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -8,72 +8,61 @@
  */
 package org.openhab.binding.intertechno.internal.parser;
 
+import java.util.List;
+
+import org.openhab.binding.intertechno.internal.CULIntertechnoBinding;
 import org.openhab.model.item.binding.BindingConfigParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This parser is able to parse the configs for "FLS" Intertechno devices, like
  * the ones sold at Conrad.
- * 
+ *
  * @author Till Klocke
  * @since 1.4.0
  */
-public class FLSParser extends AbstractIntertechnoParser {
+public class FLSParser extends AbstractGroupAddressParser {
 
-	@Override
-	public String parseAddress(String... addressParts)
-			throws BindingConfigParseException {
-		String group = addressParts[0];
-		int subAddress = 0;
-		try {
-			subAddress = Integer.parseInt(addressParts[1]);
-		} catch (NumberFormatException e) {
-			throw new BindingConfigParseException(
-					"Sub address is not a number. Configured subaddress: "
-							+ addressParts[1]);
-		}
-		return getGroupAddress(group) + getSubAddress(subAddress) + "00";
-	}
+    private static final Logger logger = LoggerFactory.getLogger(CULIntertechnoBinding.class);
 
-	private String getGroupAddress(String group)
-			throws BindingConfigParseException {
-		StringBuffer addressBuffer = new StringBuffer(4);
-		addressBuffer.append("FFFF");
-		if ("I".equalsIgnoreCase(group)) {
-			addressBuffer.setCharAt(0, '0');
+    @Override
+    public void parseConfig(List<String> configParts) throws BindingConfigParseException {
+        super.parseConfig(configParts);
 
-		} else if ("II".equalsIgnoreCase(group)) {
-			addressBuffer.setCharAt(1, '0');
-		} else if ("III".equalsIgnoreCase(group)) {
-			addressBuffer.setCharAt(2, '0');
-		} else if ("IV".equalsIgnoreCase(group)) {
-			addressBuffer.setCharAt(3, '0');
-		} else {
-			throw new BindingConfigParseException(
-					"Unknown roman number given: " + group);
-		}
-		return addressBuffer.toString();
-	}
+        commandON = getGroupAddress(group) + getSubAddress(address) + "00" + "FF";
+        commandOFF = getGroupAddress(group) + getSubAddress(address) + "00" + "F0";
 
-	private String getSubAddress(int remoteId)
-			throws BindingConfigParseException {
-		if (remoteId < 1 || remoteId > 4) {
-			throw new BindingConfigParseException(
-					"Only remote addresses in the range 1 - 4 are supported");
-		}
-		StringBuffer buffer = new StringBuffer(4);
-		buffer.append("FFFF");
-		buffer.setCharAt(remoteId - 1, '0');
-		return buffer.toString();
-	}
+        logger.trace("commandON = {}", commandON);
+        logger.trace("commandOFF = {}", commandOFF);
+    }
 
-	@Override
-	public String getCommandValueON() {
-		return "FF";
-	}
+    private String getGroupAddress(String group) throws BindingConfigParseException {
+        StringBuffer addressBuffer = new StringBuffer(4);
+        addressBuffer.append("FFFF");
+        if ("I".equalsIgnoreCase(group)) {
+            addressBuffer.setCharAt(0, '0');
 
-	@Override
-	public String getCOmmandValueOFF() {
-		return "F0";
-	}
+        } else if ("II".equalsIgnoreCase(group)) {
+            addressBuffer.setCharAt(1, '0');
+        } else if ("III".equalsIgnoreCase(group)) {
+            addressBuffer.setCharAt(2, '0');
+        } else if ("IV".equalsIgnoreCase(group)) {
+            addressBuffer.setCharAt(3, '0');
+        } else {
+            throw new BindingConfigParseException("Unknown roman number given: " + group);
+        }
+        return addressBuffer.toString();
+    }
+
+    private String getSubAddress(int remoteId) throws BindingConfigParseException {
+        if (remoteId < 1 || remoteId > 4) {
+            throw new BindingConfigParseException("Only remote addresses in the range 1 - 4 are supported");
+        }
+        StringBuffer buffer = new StringBuffer(4);
+        buffer.append("FFFF");
+        buffer.setCharAt(remoteId - 1, '0');
+        return buffer.toString();
+    }
 
 }

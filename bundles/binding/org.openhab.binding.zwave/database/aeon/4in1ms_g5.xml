@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Product>
+    <Model>ZW074</Model>
+    <Label lang="en">4 in One MultiSensor (G5)</Label>
+
+    <CommandClasses>
+        <Class>
+            <id>0x00</id>             <!-- NO_OPERATION -->
+        </Class>
+        <Class>
+            <id>0x20</id>             <!-- BASIC -->
+        </Class>
+        <Class>
+            <id>0x30</id>             <!-- SENSOR_BINARY -->
+        </Class>
+        <Class>
+            <id>0x31</id>             <!-- SENSOR_MULTILEVEL -->
+        </Class>
+        <Class>
+            <id>0x70</id>             <!-- CONFIGURATION -->
+        </Class>
+        <Class>
+            <id>0x71</id>             <!-- ALARM -->
+        </Class>
+        <Class>
+            <id>0x72</id>             <!-- MANUFACTURER_SPECIFIC -->
+        </Class>
+        <Class>
+            <id>0x80</id>             <!-- BATTERY -->
+        </Class>
+        <Class>
+            <id>0x84</id>             <!-- WAKE_UP -->
+        </Class>
+        <Class>
+            <id>0x85</id>             <!-- ASSOCIATION -->
+        </Class>
+        <Class>
+            <id>0x86</id>             <!-- VERSION -->
+        </Class>
+    </CommandClasses>
+
+    <Configuration>
+
+        <Parameter>
+            <Index>2</Index>
+            <Label lang="en">Wake up for 10 minutes when batteries are inserted</Label>
+            <Type>short</Type>
+            <Default>0</Default>
+            <Minimum>0</Minimum>
+            <Maximum>255</Maximum>
+            <Size>1</Size>
+        </Parameter>
+
+        <Parameter>
+            <Index>3</Index>
+            <Label lang="en">On time</Label>
+            <Type>short</Type>
+            <Default>240</Default>
+            <Minimum>1</Minimum>
+            <Maximum>15300</Maximum>
+            <Size>2</Size>
+            <Help><![CDATA[How long should the device associated to multi sensor keep state On before sending it Off command (if the value is bigger than 255, the value would be rounded to next integer in minutes)
+            ]]></Help>
+        </Parameter>
+
+        <Parameter>
+            <Index>4</Index>
+            <Label lang="en">Motion sensor</Label>
+            <Type>list</Type>
+            <Default>1</Default>
+            <Minimum>0</Minimum>
+            <Maximum>255</Maximum>
+            <Size>1</Size>
+            <Item>
+                <Value>0</Value>
+                <Label lang="en">Disabled</Label>
+            </Item>
+            <Item>
+                <Value>1</Value>
+                <Label lang="en">Enabled</Label>
+            </Item>
+        </Parameter>
+
+        <Parameter>
+            <Index>5</Index>
+            <Label lang="en">Command Class</Label>
+            <Type>list</Type>
+            <Default>1</Default>
+            <Minimum>1</Minimum>
+            <Maximum>2</Maximum>
+            <Size>1</Size>
+            <Item>
+                <Value>1</Value>
+                <Label lang="en">Basic Set</Label>
+            </Item>
+            <Item>
+                <Value>2</Value>
+                <Label lang="en">Sensor Binary Report</Label>
+            </Item>
+            <Help><![CDATA[Which command would be sent when the motion sensor triggered.
+            ]]></Help>
+        </Parameter>
+
+        <Parameter>
+            <Index>40</Index>
+            <Label lang="en">Enable/disable the selective reporting</Label>
+            <Type>list</Type>
+            <Default>0</Default>
+            <Minimum>0</Minimum>
+            <Maximum>255</Maximum>
+            <Size>1</Size>
+            <Item>
+                <Value>0</Value>
+                <Label lang="en">Disable</Label>
+            </Item>
+            <Item>
+                <Value>1</Value>
+                <Label lang="en">Enable</Label>
+            </Item>
+            <Help><![CDATA[<p>Enable/disable the selective reporting only when measurements reach a certain threshold or percentage set in 41‐44 below.</p> <p>This is used to reduce network traffic.</p>
+            ]]></Help>
+        </Parameter>
+
+        <Parameter>
+            <Index>41</Index>
+            <Label lang="en">Threshold change in temperature to induce an automatic report.</Label>
+            <Type>short</Type>
+            <Default>0</Default>
+            <Minimum>0</Minimum>
+            <Maximum>65535</Maximum>
+            <Size>2</Size>
+            <Help><![CDATA[1. When the unit is Celsius, threshold=Value.
+                2. When the unit is Fahrenheit, threshold=Value*1.8.
+                The accuracy is 0.1.
+                3. The high byte is the part of integer, the low byte is
+                the fractional part.
+            ]]></Help>
+        </Parameter>
+
+        <Parameter>
+            <Index>42</Index>
+            <Label lang="en">Threshold change in humidity to induce an automatic report.</Label>
+            <Type>short</Type>
+            <Default>0</Default>
+            <Minimum>0</Minimum>
+            <Maximum>65535</Maximum>
+            <Size>2</Size>
+            <Help><![CDATA[The accuracy is 0.1.
+                The high byte is the part of integer, the low byte is the fractional part.
+            ]]></Help>
+        </Parameter>
+
+        <Parameter>
+            <Index>43</Index>
+            <Label lang="en">Threshold change in luminance to induce an automatic report.</Label>
+            <Type>short</Type>
+            <Default>0</Default>
+            <Minimum>0</Minimum>
+            <Maximum>65535</Maximum>
+            <Size>2</Size>
+        </Parameter>
+
+        <Parameter>
+            <Index>44</Index>
+            <Label lang="en">Threshold change in battery level to induce an automatic report.</Label>
+            <Type>short</Type>
+            <Default>0</Default>
+            <Minimum>0</Minimum>
+            <Maximum>65535</Maximum>
+            <Size>2</Size>
+            <Help><![CDATA[The accuracy is 0.1.
+                The high byte is the part of integer, the low byte is the fractional part.
+            ]]></Help>
+        </Parameter>
+
+        <Parameter>
+            <Index>46</Index>
+            <Label lang="en">Enable/disable to send the alarm report of low temperature(‐15C)</Label>
+            <Type>list</Type>
+            <Default>0</Default>
+            <Minimum>0</Minimum>
+            <Maximum>255</Maximum>
+            <Size>1</Size>
+            <Item>
+                <Value>0</Value>
+                <Label lang="en">Disable</Label>
+            </Item>
+            <Item>
+                <Value>1</Value>
+                <Label lang="en">Enabled (The MultiSensor will report the Multi Level Temperature CC wi</Label>
+            </Item>
+        </Parameter>
+
+        <Parameter>
+            <Index>101</Index>
+            <Label lang="en">Which reports need to send automatically in timing intervals for group 1</Label>
+            <Type>short</Type>
+            <Default>0</Default>
+            <Minimum>0</Minimum>
+            <Maximum>65535</Maximum>
+            <Size>4</Size>
+            <Help><![CDATA[The value is a combination number made up of the sum of the values for the individual sensors and battery.
+                            The sensors have the values: Temperature=32, Humidity=64, Lightlevel=128, Battery=1.
+                            Therefore if you want all sensors and the batte
+            ]]></Help>
+        </Parameter>
+
+        <Parameter>
+            <Index>102</Index>
+            <Label lang="en">Which reports need to send automatically in timing intervals for group 2</Label>
+            <Type>short</Type>
+            <Default>0</Default>
+            <Minimum>0</Minimum>
+            <Maximum>65535</Maximum>
+            <Size>4</Size>
+            <Help><![CDATA[The value is a combination number made up of the sum of the values for the individual sensors and battery.
+                            The sensors have the values: Temperature=32, Humidity=64, Lightlevel=128, Battery=1.
+                            Therefore if you want all sensors and the batte
+            ]]></Help>
+        </Parameter>
+
+        <Parameter>
+            <Index>103</Index>
+            <Label lang="en">Which reports need to send automatically in timing intervals for group 3</Label>
+            <Type>short</Type>
+            <Default>0</Default>
+            <Minimum>0</Minimum>
+            <Maximum>65535</Maximum>
+            <Size>4</Size>
+            <Help><![CDATA[The value is a combination number made up of the sum of the values for the individual sensors and battery.
+                            The sensors have the values: Temperature=32, Humidity=64, Lightlevel=128, Battery=1.
+                            Therefore if you want all sensors and the batte
+            ]]></Help>
+        </Parameter>
+
+        <Parameter>
+            <Index>111</Index>
+            <Label lang="en">Interval to send out reports of group 1</Label>
+            <Type>short</Type>
+            <Default>720</Default>
+            <Minimum>1</Minimum>
+            <Maximum>2678400</Maximum>
+            <Size>4</Size>
+        </Parameter>
+
+        <Parameter>
+            <Index>112</Index>
+            <Label lang="en">Interval to send out reports of group 2</Label>
+            <Type>short</Type>
+            <Default>720</Default>
+            <Minimum>1</Minimum>
+            <Maximum>2678400</Maximum>
+            <Size>4</Size>
+        </Parameter>
+
+        <Parameter>
+            <Index>113</Index>
+            <Label lang="en">Interval to send out reports of group 3</Label>
+            <Type>short</Type>
+            <Default>720</Default>
+            <Minimum>1</Minimum>
+            <Maximum>2678400</Maximum>
+            <Size>4</Size>
+        </Parameter>
+
+        <Parameter>
+            <Index>252</Index>
+            <Label lang="en">Enable/disable Configuration Locked</Label>
+            <Type>list</Type>
+            <Default>0</Default>
+            <Minimum>0</Minimum>
+            <Maximum>255</Maximum>
+            <Size>1</Size>
+            <Item>
+                <Value>0</Value>
+                <Label lang="en">Disable</Label>
+            </Item>
+            <Item>
+                <Value>1</Value>
+                <Label lang="en">Enabled</Label>
+            </Item>
+        </Parameter>
+
+        <Parameter>
+            <Index>255</Index>
+            <Label lang="en">Reset to default factory setting.</Label>
+            <Type>list</Type>
+            <Default>1</Default>
+            <Minimum>0</Minimum>
+            <Maximum>255</Maximum>
+            <WriteOnly>true</WriteOnly>
+            <Size>4</Size>
+            <Item>
+                <Value>1</Value>
+                <Label lang="en">Resets all configuration parameters to default setting.</Label>
+            </Item>
+            <Item>
+                <Value>1431655765</Value>
+                <Label lang="en">Reset the product to default factory setting and be excluded from the </Label>
+            </Item>
+        </Parameter>
+
+    </Configuration>
+
+    <Associations>
+
+        <Group>
+            <Index>1</Index>
+            <Label lang="en">Lifeline</Label>
+            <Maximum>5</Maximum>
+            <SetToController>true</SetToController>
+        </Group>
+
+        <Group>
+            <Index>2</Index>
+            <Label lang="en">Basic Set</Label>
+            <Maximum>5</Maximum>
+        </Group>
+
+        <Group>
+            <Index>3</Index>
+            <Label lang="en">Dimmer Start/Stop</Label>
+            <Maximum>5</Maximum>
+        </Group>
+
+        <Group>
+            <Index>4</Index>
+            <Label lang="en">Dimmer Set</Label>
+            <Maximum>5</Maximum>
+        </Group>
+
+        <Group>
+            <Index>5</Index>
+            <Label lang="en">Temperature Report</Label>
+            <Maximum>5</Maximum>
+        </Group>
+
+    </Associations>
+
+</Product>

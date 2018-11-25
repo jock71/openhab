@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2014, openHAB.org and others.
+ * Copyright (c) 2010-2018 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -8,11 +8,15 @@
  */
 package org.openhab.binding.mqtt.internal;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Dictionary;
 
 import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.mqtt.MqttBindingProvider;
 import org.openhab.core.binding.AbstractBinding;
+import org.openhab.core.items.Item;
+import org.openhab.core.items.ItemNotFoundException;
+import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.openhab.io.transport.mqtt.MqttService;
@@ -22,300 +26,326 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Binding to broadcasts all commands and/or states received on the OpenHab
- * event bus to predefined topics on an MQTT Broker. The binding can also
+ * Binding to broadcast all commands and/or states received on the openHAB
+ * event bus to predefined topics on an MQTT broker. The binding can also
  * subscribe to state or command topics and publish all of these to the openHAB
  * event bus.
- * 
+ *
  * @author Davy Vanherbergen
  * @since 1.3.0
  */
 public class MqttEventBusBinding extends AbstractBinding<MqttBindingProvider> implements ManagedService {
 
-	private static final Logger logger = LoggerFactory.getLogger(MqttEventBusBinding.class);
+    private final Logger logger = LoggerFactory.getLogger(MqttEventBusBinding.class);
 
-	/** MqttService for sending/receiving messages **/
-	private MqttService mqttService;
+    /** MqttService for sending/receiving messages **/
+    private MqttService mqttService;
 
-	/** Message producer for sending state messages to MQTT **/
-	private MqttMessagePublisher statePublisher;
+    /** openHAB ItemRegistry for resolving item names to items **/
+    private ItemRegistry itemRegistry;
 
-	/** Message producer for sending command messages to MQTT **/
-	private MqttMessagePublisher commandPublisher;
+    /** Message producer for sending state messages to MQTT **/
+    private MqttMessagePublisher statePublisher;
 
-	/** Message consumer for receiving state messages from MQTT **/
-	private MqttMessageSubscriber stateSubscriber;
+    /** Message producer for sending command messages to MQTT **/
+    private MqttMessagePublisher commandPublisher;
 
-	/** Message consumer for receiving state messages from MQTT **/
-	private MqttMessageSubscriber commandSubscriber;
+    /** Message consumer for receiving state messages from MQTT **/
+    private MqttMessageSubscriber stateSubscriber;
 
-	/**
-	 * Name of the broker defined in the openhab.cfg to use for sending messages
-	 * to
-	 **/
-	private String brokerName;
+    /** Message consumer for receiving state messages from MQTT **/
+    private MqttMessageSubscriber commandSubscriber;
 
-	@Override
-	public void activate() {
-		super.activate();
-		logger.debug("MQTT: Activating event bus binding.");
-	}
+    /**
+     * Name of the broker defined in the openhab.cfg to use for sending messages
+     */
+    private String brokerName;
 
-	@Override
-	public void deactivate() {
+    @Override
+    public void activate() {
+        super.activate();
+        logger.debug("MQTT: Activating event bus binding.");
+    }
 
-		if (StringUtils.isBlank(brokerName)) {
-			return;
-		}
+    @Override
+    public void deactivate() {
+        if (StringUtils.isBlank(brokerName)) {
+            return;
+        }
 
-		if (commandPublisher != null) {
-			mqttService.unregisterMessageProducer(brokerName, commandPublisher);
-			commandPublisher = null;
-		}
-		if (statePublisher != null) {
-			mqttService.unregisterMessageProducer(brokerName, statePublisher);
-			statePublisher = null;
-		}
-		if (commandSubscriber != null) {
-			mqttService.unregisterMessageConsumer(brokerName, commandSubscriber);
-			commandSubscriber = null;
-		}
-		if (stateSubscriber != null) {
-			mqttService.unregisterMessageConsumer(brokerName, stateSubscriber);
-			stateSubscriber = null;
-		}
-	}
+        if (commandPublisher != null) {
+            mqttService.unregisterMessageProducer(brokerName, commandPublisher);
+            commandPublisher = null;
+        }
+        if (statePublisher != null) {
+            mqttService.unregisterMessageProducer(brokerName, statePublisher);
+            statePublisher = null;
+        }
+        if (commandSubscriber != null) {
+            mqttService.unregisterMessageConsumer(brokerName, commandSubscriber);
+            commandSubscriber = null;
+        }
+        if (stateSubscriber != null) {
+            mqttService.unregisterMessageConsumer(brokerName, stateSubscriber);
+            stateSubscriber = null;
+        }
+    }
 
-	/**
-	 * Extract the item name from the topic. This should be the last part of the
-	 * topic string, as the topics are in the format of
-	 * /openHab/myItemName/command
-	 * 
-	 * @param topic
-	 *            from which to parse the item name.
-	 * @return item name or "unknown".
-	 */
-	private String getItemNameFromTopic(String topicDefinition,
-			String actualTopic) {
+    /**
+     * Extract the item name from the topic. This should be the last part of the
+     * topic string, as the topics are in the format of
+     * /openHab/myItemName/command
+     * 
+     * @param topic
+     *            from which to parse the item name.
+     * @return item name or "unknown".
+     */
+    private String getItemNameFromTopic(String topicDefinition, String actualTopic) {
+        String itemName = "error-parsing-name-from-topic";
+        if (StringUtils.isEmpty(actualTopic) || actualTopic.indexOf('/') == -1) {
+            return itemName;
+        }
 
-		String itemName = "error-parsing-name-from-topic";
-		if (StringUtils.isEmpty(actualTopic) || actualTopic.indexOf('/') == -1) {
-			return itemName;
-		}
+        String[] definitionParts = topicDefinition.split("/");
+        String[] actualParts = actualTopic.split("/");
 
-		String[] definitionParts = topicDefinition.split("/");
-		String[] actualParts = actualTopic.split("/");
+        for (int i = 0; i < definitionParts.length; i++) {
+            if (definitionParts[i].equalsIgnoreCase("+")) {
+                itemName = actualParts[i];
+                break;
+            }
+        }
+        return itemName;
+    }
 
-		for (int i = 0; i < definitionParts.length; i++) {
-			if (definitionParts[i].equalsIgnoreCase("+")) {
-				itemName = actualParts[i];
-				break;
-			}
-		}
-		return itemName;
-	}
+    @Override
+    public void receiveUpdate(String itemName, State newState) {
+        if (newState == null || statePublisher == null || !statePublisher.isActivated()) {
+            return;
+        }
 
-	@Override
-	public void receiveUpdate(String itemName, State newState) {
-		if (newState == null || statePublisher == null
-				|| !statePublisher.isActivated()) {
-			return;
-		}
-		statePublisher.publish(statePublisher.getTopic(itemName), newState
-				.toString().getBytes());
-	}
+        try {
+            byte[] utf8 = newState.toString().getBytes("UTF-8");
+            statePublisher.publish(statePublisher.getTopic(itemName), utf8);
+        } catch (UnsupportedEncodingException e) {
+            logger.warn("UTF-8 encoding not supported. Cannot publish state.");
+        }
+    }
 
-	@Override
-	public void receiveCommand(String itemName, Command command) {
-		if (commandPublisher == null || command == null || !commandPublisher.isActivated()) {
-			return;
-		}
-		commandPublisher.publish(
-			commandPublisher.getTopic(itemName), command.toString().getBytes());
-	}
+    @Override
+    public void receiveCommand(String itemName, Command command) {
+        if (commandPublisher == null || command == null || !commandPublisher.isActivated()) {
+            return;
+        }
 
-	/**
-	 * Setter for Declarative Services. Adds the MqttService instance.
-	 * 
-	 * @param mqttService
-	 *            Service.
-	 */
-	public void setMqttService(MqttService mqttService) {
-		this.mqttService = mqttService;
-	}
+        try {
+            byte[] utf8 = command.toString().getBytes("UTF-8");
+            commandPublisher.publish(commandPublisher.getTopic(itemName), utf8);
+        } catch (UnsupportedEncodingException e) {
+            logger.warn("UTF-8 encoding not supported. Cannot publish command.");
+        }
+    }
 
-	/**
-	 * Unsetter for Declarative Services.
-	 * 
-	 * @param mqttService
-	 *            MqttService to remove.
-	 */
-	public void unsetMqttService(MqttService mqttService) {
-		this.mqttService = null;
-	}
+    /**
+     * Setter for Declarative Services. Adds the MqttService instance.
+     * 
+     * @param mqttService
+     *            Service.
+     */
+    public void setMqttService(MqttService mqttService) {
+        this.mqttService = mqttService;
+    }
 
-	/**
-	 * Initialize publisher which publishes all openHAB commands to the given
-	 * MQTT topic.
-	 * 
-	 * @param topic
-	 *            to subscribe to.
-	 */
-	private void setupEventBusStatePublisher(String topic) {
+    /**
+     * Unsetter for Declarative Services.
+     * 
+     * @param mqttService
+     *            MqttService to remove.
+     */
+    public void unsetMqttService(MqttService mqttService) {
+        this.mqttService = null;
+    }
 
-		if (StringUtils.isBlank(topic)) {
-			logger.trace("No topic defined for Event Bus State Publisher");
-			return;
-		}
+    /**
+     * Setter for the openHAB ItemRegistry.
+     *
+     * @param itemRegistry
+     *            the openHAB item registry.
+     */
+    public void setItemRegistry(ItemRegistry itemRegistry) {
+        this.itemRegistry = itemRegistry;
+    }
 
-		try {
-			logger.debug("Setting up Event Bus State Publisher for topic {}", topic);
-			statePublisher = new MqttMessagePublisher(brokerName + ":" + topic
-					+ ":state:*:default");
-			mqttService.registerMessageProducer(brokerName, statePublisher);
+    /**
+     * Unsetter for the openHAB ItemRegistry.
+     *
+     * @param itemRegistry
+     *            itemRegistry to remove.
+     */
+    public void unsetItemRegistry(ItemRegistry itemRegistry) {
+        this.itemRegistry = null;
+    }
 
-		} catch (Exception e) {
-			logger.error("Could not create event bus state publisher: {}", e.getMessage());
-		}
+    /**
+     * Initialize publisher which publishes all openHAB commands to the given
+     * MQTT topic.
+     * 
+     * @param topic
+     *            to subscribe to.
+     */
+    private void setupEventBusStatePublisher(String topic) {
 
-	}
+        if (StringUtils.isBlank(topic)) {
+            logger.trace("No topic defined for Event Bus State Publisher");
+            return;
+        }
 
-	/**
-	 * Initialize subscriber which broadcasts all received command events onto
-	 * the openHAB event bus.
-	 * 
-	 * @param topic
-	 *            to subscribe to.
-	 */
-	private void setupEventBusCommandSubscriber(String topic) {
+        try {
+            logger.debug("Setting up Event Bus State Publisher for topic {}", topic);
+            statePublisher = new MqttMessagePublisher(brokerName + ":" + topic + ":state:*:default");
+            mqttService.registerMessageProducer(brokerName, statePublisher);
+        } catch (Exception e) {
+            logger.warn("Could not create event bus state publisher: {}", e.getMessage(), e);
+        }
 
-		if (StringUtils.isBlank(topic)) {
-			logger.trace("No topic defined for Event Bus Command Subsriber");
-			return;
-		}
+    }
 
-		try {
-			topic = StringUtils.replace(topic, "${item}", "+");
-			logger.debug("Setting up Event Bus Command Subscriber for topic {}", topic);
-			commandSubscriber = new MqttMessageSubscriber(brokerName + ":"
-					+ topic + ":command:default") {
+    /**
+     * Initialize subscriber which broadcasts all received command events onto
+     * the openHAB event bus.
+     * 
+     * @param topic
+     *            to subscribe to
+     */
+    private void setupEventBusCommandSubscriber(String topic) {
+        if (StringUtils.isBlank(topic)) {
+            logger.trace("No topic defined for Event Bus Command Subscriber");
+            return;
+        }
 
-				@Override
-				public void processMessage(String topic, byte[] message) {
-					Command command;
-					try {
-						command = getCommand(new String(message));
-					} catch (Exception e) {
-						logger.error("Error parsing command from message.", e);
-						return;
-					}
-					eventPublisher.postCommand(
-							getItemNameFromTopic(getTopic(), topic), command);
-				}
+        try {
+            topic = StringUtils.replace(topic, "${item}", "+");
+            logger.debug("Setting up Event Bus Command Subscriber for topic {}", topic);
+            commandSubscriber = new MqttMessageSubscriber(brokerName + ":" + topic + ":command:default") {
 
-			};
-			mqttService.registerMessageConsumer(brokerName, commandSubscriber);
+                @Override
+                public void processMessage(String topic, byte[] message) {
+                    String itemName = getItemNameFromTopic(getTopic(), topic);
+                    if (itemRegistry == null) {
+                        logger.warn("Unable to look up item {} for command; dropping", itemName);
+                        return;
+                    }
+                    Command command;
+                    try {
+                        Item item = itemRegistry.getItem(itemName);
+                        command = getCommand(new String(message, "UTF-8"), item.getAcceptedCommandTypes());
+                    } catch (ItemNotFoundException e) {
+                        logger.debug("Unable to find item {} for command; dropping", itemName);
+                        return;
+                    } catch (Exception e) {
+                        logger.warn("Error parsing command from message.", e);
+                        return;
+                    }
+                    eventPublisher.postCommand(itemName, command);
+                }
+            };
+            mqttService.registerMessageConsumer(brokerName, commandSubscriber);
+        } catch (Exception e) {
+            logger.warn("Could not create event bus command subscriber: {}", e.getMessage(), e);
+        }
+    }
 
-		} catch (Exception e) {
-			logger.error("Could not create event bus command subscriber: {}",
-					e.getMessage());
-		}
+    /**
+     * Initialize subscriber which broadcasts all received state events onto the
+     * openHAB event bus.
+     * 
+     * @param topic
+     *            to subscribe to
+     */
+    private void setupEventBusStateSubscriber(String topic) {
+        if (StringUtils.isBlank(topic)) {
+            logger.trace("No topic defined for Event Bus State Subscriber");
+            return;
+        }
 
-	}
+        try {
+            topic = StringUtils.replace(topic, "${item}", "+");
+            logger.debug("Setting up Event Bus State Subscriber for topic {}", topic);
+            stateSubscriber = new MqttMessageSubscriber(brokerName + ":" + topic + ":state:default") {
 
-	/**
-	 * Initialize subscriber which broadcasts all received state events onto the
-	 * openHAB event bus.
-	 * 
-	 * @param topic
-	 *            to subscribe to.
-	 */
-	private void setupEventBusStateSubscriber(String topic) {
+                @Override
+                public void processMessage(String topic, byte[] message) {
+                    String itemName = getItemNameFromTopic(getTopic(), topic);
+                    if (itemRegistry == null) {
+                        logger.warn("Unable to look up item {} for update; dropping", itemName);
+                        return;
+                    }
+                    State state;
+                    try {
+                        Item item = itemRegistry.getItem(itemName);
+                        state = getState(new String(message, "UTF-8"), item.getAcceptedDataTypes());
+                    } catch (ItemNotFoundException e) {
+                        logger.debug("Unable to find item {} for update; dropping", itemName);
+                        return;
+                    } catch (Exception e) {
+                        logger.warn("Error parsing state from message.", e);
+                        return;
+                    }
+                    eventPublisher.postUpdate(itemName, state);
+                }
+            };
+            mqttService.registerMessageConsumer(brokerName, stateSubscriber);
+        } catch (Exception e) {
+            logger.warn("Could not create event bus state subscriber: {}", e.getMessage(), e);
+        }
+    }
 
-		if (StringUtils.isBlank(topic)) {
-			logger.trace("No topic defined for Event Bus State Subsriber");
-			return;
-		}
+    /**
+     * Initialize publisher which publishes all openHAB commands to the given
+     * MQTT topic.
+     * 
+     * @param topic
+     *            to subscribe to
+     */
+    private void setupEventBusCommandPublisher(String topic) {
+        if (StringUtils.isBlank(topic)) {
+            logger.trace("No topic defined for Event Bus Command Publisher");
+            return;
+        }
 
-		try {
-			topic = StringUtils.replace(topic, "${item}", "+");
-			logger.debug("Setting up Event Bus State Subscriber for topic {}", topic);
-			stateSubscriber = new MqttMessageSubscriber(brokerName + ":"
-					+ topic + ":state:default") {
+        try {
+            logger.debug("Setting up Event Bus Command Publisher for topic {}", topic);
+            commandPublisher = new MqttMessagePublisher(brokerName + ":" + topic + ":command:*:default");
+            mqttService.registerMessageProducer(brokerName, commandPublisher);
+        } catch (Exception e) {
+            logger.warn("Could not create event bus command publisher: {}", e.getMessage(), e);
+        }
+    }
 
-				@Override
-				public void processMessage(String topic, byte[] message) {
-					State state;
-					try {
-						state = getState(new String(message));
-					} catch (Exception e) {
-						logger.error("Error parsing state from message.", e);
-						return;
-					}
-					eventPublisher.postUpdate(
-							getItemNameFromTopic(getTopic(), topic), state);
-				}
-			};
-			mqttService.registerMessageConsumer(brokerName, stateSubscriber);
+    @Override
+    public void updated(Dictionary<String, ?> properties) throws ConfigurationException {
+        // load event bus pubish/subscribe configuration from configuration file
+        if (properties == null || properties.isEmpty()) {
+            logger.trace("No mqtt-eventbus properties configured.");
+            return;
+        }
 
-		} catch (Exception e) {
-			logger.error("Could not create event bus state subscriber: {}",
-					e.getMessage());
-		}
+        logger.debug("Initializing MQTT Event Bus Binding");
 
-	}
+        // stop existing publishers/subscribers
+        deactivate();
 
-	/**
-	 * Initialize publisher which publishes all openHAB commands to the given
-	 * MQTT topic.
-	 * 
-	 * @param topic
-	 *            to subscribe to.
-	 */
-	private void setupEventBusCommandPublisher(String topic) {
+        brokerName = (String) properties.get("broker");
+        if (StringUtils.isEmpty(brokerName)) {
+            logger.debug("No broker name configured for MQTT EventBusBinding");
+            return;
+        }
 
-		if (StringUtils.isBlank(topic)) {
-			logger.trace("No topic defined for Event Bus Command Publisher");
-			return;
-		}
+        setupEventBusStatePublisher((String) properties.get("statePublishTopic"));
+        setupEventBusStateSubscriber((String) properties.get("stateSubscribeTopic"));
+        setupEventBusCommandPublisher((String) properties.get("commandPublishTopic"));
+        setupEventBusCommandSubscriber((String) properties.get("commandSubscribeTopic"));
 
-		try {
-			logger.debug("Setting up Event Bus Command Publisher for topic {}", topic);
-			commandPublisher = new MqttMessagePublisher(brokerName + ":"
-					+ topic + ":command:*:default");
-			mqttService.registerMessageProducer(brokerName, commandPublisher);
-
-		} catch (Exception e) {
-			logger.error("Could not create event bus command publisher: {}", e.getMessage());
-		}
-	}
-
-	@Override
-	public void updated(Dictionary<String, ?> properties) throws ConfigurationException {
-
-		// load event bus pubish/subscribe configuration from configuration file
-		if (properties == null || properties.isEmpty()) {
-			logger.trace("No mqtt-eventbus properties configured.");
-			return;
-		}
-
-		logger.debug("Initializing MQTT Event Bus Binding");
-		
-		// stop existing publishers/subscribers
-		deactivate();
-
-		brokerName = (String) properties.get("broker");
-		if (StringUtils.isEmpty(brokerName)) {
-			logger.debug("No broker name configured for MQTT EventBusBinding");
-			return;
-		}
-
-		setupEventBusStatePublisher((String) properties.get("statePublishTopic"));
-		setupEventBusStateSubscriber((String) properties.get("stateSubscribeTopic"));
-		setupEventBusCommandPublisher((String) properties.get("commandPublishTopic"));
-		setupEventBusCommandSubscriber((String) properties.get("commandSubscribeTopic"));
-
-		logger.debug("MQTT Event Bus Binding initialization completed.");
-	}
-	
+        logger.debug("MQTT Event Bus Binding initialization completed.");
+    }
 }

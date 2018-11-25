@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2014, openHAB.org and others.
+ * Copyright (c) 2010-2016 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -20,56 +20,67 @@ import org.openhab.binding.astro.internal.util.DateTimeUtils;
 
 /**
  * Calculates the sign and range of the current zodiac.
- * 
+ *
  * @author Gerhard Riegler
  * @since 1.6.0
  */
 public class SunZodiacCalc {
-	private Map<Integer, List<SunZodiac>> zodiacsByYear = new HashMap<Integer, List<SunZodiac>>();
+    private Map<Integer, List<SunZodiac>> zodiacsByYear = new HashMap<Integer, List<SunZodiac>>();
 
-	/**
-	 * Returns the zodiac for the specified calendar.
-	 */
-	public SunZodiac getZodiac(Calendar calendar) {
-		int year = calendar.get(Calendar.YEAR);
-		List<SunZodiac> zodiacs = zodiacsByYear.get(year);
-		if (zodiacs == null) {
-			zodiacs = calculateZodiacs();
-			zodiacsByYear.clear();
-			zodiacsByYear.put(year, zodiacs);
-		}
+    /**
+     * Returns the zodiac for the specified calendar.
+     */
+    public SunZodiac getZodiac(Calendar calendar) {
+        int year = calendar.get(Calendar.YEAR);
+        List<SunZodiac> zodiacs = zodiacsByYear.get(year);
+        if (zodiacs == null) {
+            zodiacs = calculateZodiacs(year);
+            zodiacsByYear.clear();
+            zodiacsByYear.put(year, zodiacs);
+        }
 
-		for (SunZodiac zodiac : zodiacs) {
-			if (zodiac.isValid(calendar)) {
-				return zodiac;
-			}
-		}
+        for (SunZodiac zodiac : zodiacs) {
+            if (zodiac.isValid(calendar)) {
+                return zodiac;
+            }
+        }
 
-		return null;
-	}
+        return null;
+    }
 
-	/**
-	 * Calculates the zodiacs for the current year.
-	 */
-	private List<SunZodiac> calculateZodiacs() {
-		List<SunZodiac> zodiacs = new ArrayList<SunZodiac>();
+    /**
+     * Calculates the zodiacs for the current year.
+     */
+    private List<SunZodiac> calculateZodiacs(int year) {
+        List<SunZodiac> zodiacs = new ArrayList<SunZodiac>();
 
-		zodiacs.add(new SunZodiac(ZodiacSign.ARIES, DateTimeUtils.getRange(Calendar.MARCH, 21, Calendar.APRIL, 19)));
-		zodiacs.add(new SunZodiac(ZodiacSign.TAURUS, DateTimeUtils.getRange(Calendar.APRIL, 20, Calendar.MAY, 20)));
-		zodiacs.add(new SunZodiac(ZodiacSign.GEMINI, DateTimeUtils.getRange(Calendar.MAY, 21, Calendar.JUNE, 20)));
-		zodiacs.add(new SunZodiac(ZodiacSign.CANCER, DateTimeUtils.getRange(Calendar.JUNE, 21, Calendar.JULY, 22)));
-		zodiacs.add(new SunZodiac(ZodiacSign.LEO, DateTimeUtils.getRange(Calendar.JULY, 23, Calendar.AUGUST, 22)));
-		zodiacs.add(new SunZodiac(ZodiacSign.VIRGO, DateTimeUtils.getRange(Calendar.AUGUST, 23, Calendar.SEPTEMBER, 22)));
-		zodiacs.add(new SunZodiac(ZodiacSign.LIBRA, DateTimeUtils.getRange(Calendar.SEPTEMBER, 23, Calendar.OCTOBER, 22)));
-		zodiacs.add(new SunZodiac(ZodiacSign.SCORPIO, DateTimeUtils.getRange(Calendar.OCTOBER, 23, Calendar.NOVEMBER, 21)));
-		zodiacs.add(new SunZodiac(ZodiacSign.SAGITTARIUS, DateTimeUtils.getRange(Calendar.NOVEMBER, 22, Calendar.DECEMBER,
-				21)));
-		zodiacs.add(new SunZodiac(ZodiacSign.CAPRICORN, DateTimeUtils.getRange(Calendar.DECEMBER, 22, Calendar.DECEMBER,
-				31)));
-		zodiacs.add(new SunZodiac(ZodiacSign.CAPRICORN, DateTimeUtils.getRange(Calendar.JANUARY, 1, Calendar.JANUARY, 19)));
-		zodiacs.add(new SunZodiac(ZodiacSign.AQUARIUS, DateTimeUtils.getRange(Calendar.JANUARY, 20, Calendar.FEBRUARY, 18)));
-		zodiacs.add(new SunZodiac(ZodiacSign.PISCES, DateTimeUtils.getRange(Calendar.FEBRUARY, 19, Calendar.MARCH, 20)));
+        zodiacs.add(new SunZodiac(ZodiacSign.ARIES,
+                DateTimeUtils.getRange(year, Calendar.MARCH, 21, year, Calendar.APRIL, 19)));
+        zodiacs.add(new SunZodiac(ZodiacSign.TAURUS,
+                DateTimeUtils.getRange(year, Calendar.APRIL, 20, year, Calendar.MAY, 20)));
+        zodiacs.add(new SunZodiac(ZodiacSign.GEMINI,
+                DateTimeUtils.getRange(year, Calendar.MAY, 21, year, Calendar.JUNE, 20)));
+        zodiacs.add(new SunZodiac(ZodiacSign.CANCER,
+                DateTimeUtils.getRange(year, Calendar.JUNE, 21, year, Calendar.JULY, 22)));
+        zodiacs.add(new SunZodiac(ZodiacSign.LEO,
+                DateTimeUtils.getRange(year, Calendar.JULY, 23, year, Calendar.AUGUST, 22)));
+        zodiacs.add(new SunZodiac(ZodiacSign.VIRGO,
+                DateTimeUtils.getRange(year, Calendar.AUGUST, 23, year, Calendar.SEPTEMBER, 22)));
+        zodiacs.add(new SunZodiac(ZodiacSign.LIBRA,
+                DateTimeUtils.getRange(year, Calendar.SEPTEMBER, 23, year, Calendar.OCTOBER, 22)));
+        zodiacs.add(new SunZodiac(ZodiacSign.SCORPIO,
+                DateTimeUtils.getRange(year, Calendar.OCTOBER, 23, year, Calendar.NOVEMBER, 21)));
+        zodiacs.add(new SunZodiac(ZodiacSign.SAGITTARIUS,
+                DateTimeUtils.getRange(year, Calendar.NOVEMBER, 22, year, Calendar.DECEMBER, 21)));
+        zodiacs.add(new SunZodiac(ZodiacSign.CAPRICORN,
+                DateTimeUtils.getRange(year, Calendar.DECEMBER, 22, year + 1, Calendar.JANUARY, 19)));
+        zodiacs.add(new SunZodiac(ZodiacSign.CAPRICORN,
+                DateTimeUtils.getRange(year - 1, Calendar.DECEMBER, 22, year, Calendar.JANUARY, 19)));
+        zodiacs.add(new SunZodiac(ZodiacSign.AQUARIUS,
+                DateTimeUtils.getRange(year, Calendar.JANUARY, 20, year, Calendar.FEBRUARY, 18)));
+        zodiacs.add(new SunZodiac(ZodiacSign.PISCES,
+                DateTimeUtils.getRange(year, Calendar.FEBRUARY, 19, year, Calendar.MARCH, 20)));
 
-		return zodiacs;
-	}
+        return zodiacs;
+    }
 }
