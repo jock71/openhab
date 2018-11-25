@@ -1,36 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xmlns="http://maven.apache.org/POM/4.0.0"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
-	<parent>
-		<groupId>org.openhab.bundles</groupId>
-		<artifactId>binding</artifactId>
-		<version>1.7.0-SNAPSHOT</version>
-	</parent>
+  <modelVersion>4.0.0</modelVersion>
 
-	<name>openHAB Active-Actor Items Binding</name>
+  <parent>
+    <groupId>org.openhab.bundles</groupId>
+    <artifactId>binding</artifactId>
+    <version>1.13.0-SNAPSHOT</version>
+  </parent>
+  <groupId>org.openhab.binding</groupId>
+  <artifactId>org.openhab.binding.acit</artifactId>
 
-	<properties>
-		<bundle.symbolicName>org.openhab.binding.acit</bundle.symbolicName>
-		<bundle.namespace>org.openhab.binding.acit</bundle.namespace>
-		<deb.name>openhab-addon-binding-acit</deb.name>
-		<deb.description>${project.name}</deb.description>
-	</properties>
-
-	<modelVersion>4.0.0</modelVersion>
-	<groupId>org.openhab.binding</groupId>
-	<artifactId>org.openhab.binding.acit</artifactId>
-
-	<packaging>eclipse-plugin</packaging>
-
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.vafer</groupId>
-				<artifactId>jdeb</artifactId>
-			</plugin>
-		</plugins>
-	</build>
-
+  <packaging>eclipse-plugin</packaging>
+  
+  <name>openHAB Active-Actor Items Binding</name>
+  
+    <build>
+    <plugins>
+      <plugin>
+        <groupId>${tycho-groupid}</groupId>
+        <artifactId>tycho-compiler-plugin</artifactId>
+        <version>${tycho-version}</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+          <source>1.7</source>
+          <target>1.7</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>net.alchim31.maven</groupId>
+        <artifactId>scala-maven-plugin</artifactId>
+        <version>3.2.0</version>
+        <configuration>
+          <sourceDir>src/main/java</sourceDir>
+          <scalaVersion>2.11.2</scalaVersion>
+        </configuration>
+        <executions>
+          <execution>
+            <id>scala-compile-first</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>add-source</goal>
+              <goal>compile</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>scala-test-compile</id>
+            <phase>process-test-resources</phase>
+            <goals>
+              <goal>testCompile</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+  
 </project>

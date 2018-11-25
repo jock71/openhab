@@ -3,7 +3,7 @@ Private-Package: org.openhab.binding.acit.internal
 Ignore-Package: org.openhab.binding.acit.internal
 Bundle-Name: openHAB Active_Actor Item Binding
 Bundle-Vendor: openHAB.org
-Bundle-Version: 1.7.0.qualifier
+Bundle-Version: 1.13.0.qualifier
 Bundle-Activator: org.openhab.binding.acit.internal.ActiveItemsActivator
 Bundle-ManifestVersion: 2
 Bundle-License: http://www.eclipse.org/legal/epl-v10.html
@@ -31,7 +31,7 @@ Import-Package: com.google.common.base,
  org.slf4j
 Bundle-SymbolicName: org.openhab.binding.acit
 Bundle-DocURL: http://www.openhab.org
-Bundle-RequiredExecutionEnvironment: J2SE-1.5
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Service-Component: OSGI-INF/binding.xml, OSGI-INF/genericbindingprovider.xml
 Bundle-ClassPath: .,
  lib/org.scala-lang.scala-actors_2.11.4.v20141023-110636-d783face36.jar,
