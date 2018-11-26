@@ -10,23 +10,27 @@ import org.openhab.core.library.types.StopMoveType
 import org.openhab.core.library.types.PercentType
 import org.openhab.core.library.types.DecimalType
 import java.util._
+import scala.Option
+import scala.Some
+import scala.None
 
 class ShutterManager {
   
 }
 
 object ShutterManager {
-  def getActorForItem(itemName:String, 
+  def createActorForItem(itemName:String, 
       provider:ActiveItemsBindingProvider,
       eventPublisher:EventPublisher):ActorRef = {
 
     val itemBehind:String = provider.getItemBehindName(itemName)
     val calibrationHt = provider.getCalibration(itemName)
     val cal = convertProperties(calibrationHt)
-    
+  
     ActiveItemsActivator.actorSystem.actorOf(
-        ShutterActor.props(itemName, itemBehind, cal, eventPublisher), 
-        name = "Actor_" + itemName);
+          ShutterActor.props(itemName, itemBehind, cal, eventPublisher), 
+          name = "Actor_" + itemName
+    );
   }
   
   def convertProperties(prop:java.util.Hashtable[java.lang.Double,java.lang.Double])

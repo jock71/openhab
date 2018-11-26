@@ -8,6 +8,9 @@ import org.openhab.core.library.types.StopMoveType
 import org.openhab.core.library.types.PercentType
 import scala.concurrent.duration._
 import ShutterBehaviour._
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 
 class ShutterActor(
     item:String, 
@@ -16,15 +19,14 @@ class ShutterActor(
     eventPublisher:EventPublisher) extends Actor {
   
   val resynchName = "resync-4-" + itemBehind
-  
+  val logger = LoggerFactory.getLogger("ShutterActor")
+
   def receive = idle(IdleData(-1))
     
   def handleMoveTo(data:IdleData):PartialFunction[Any,Unit] = {
     case ShutterMoveToMsg(targetPos:Int) =>
       if(isResyncRequired(data.currentPos, targetPos)) {
         val resyncPos = getResyncPos(targetPos)
-        //context.system.scheduler.scheduleOnce(30 seconds, self, message)
-        //context.setReceiveTimeout(30 seconds)
         eventPublisher.postCommand(itemBehind, new PercentType(resyncPos))
         context.become(resync(ResyncData(data.currentPos, resyncPos, targetPos)), true)
       } else {
@@ -72,7 +74,7 @@ class ShutterActor(
   def resync(data:ResyncData):PartialFunction[Any,Unit] = {
     case ShutterBehindUpdatePosMsg(pos) =>
       println("resync:ShutterBehindUpdate pos="+pos+" data=("+data.resyncPos+","+data.targetPos+")")
-      if(positionReached(pos, data)) { // we reached resynch position
+      if(positionReached(pos, data)) { // we reached resync position
         println("resync:positionReached")
         val behindPos = fromActive2Behind(data.targetPos, calibration)
         eventPublisher.postCommand(itemBehind, new PercentType(behindPos))
@@ -103,7 +105,8 @@ class ShutterActor(
   
   
   private def isResyncRequired(currentPos:Int, targetPos:Int):Boolean = {
-    if(targetPos<10 || targetPos>90) true else false
+    logger.warn(s"isResynchRequired(currentPos=${currentPos},targetPos=${targetPos}\n)")
+    (targetPos<10 || targetPos>90)
   }
   
   private def getResyncPos(position:Int):Int = {
