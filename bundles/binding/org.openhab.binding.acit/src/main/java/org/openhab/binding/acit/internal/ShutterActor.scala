@@ -73,15 +73,15 @@ class ShutterActor(
    
   def resync(data:ResyncData):PartialFunction[Any,Unit] = {
     case ShutterBehindUpdatePosMsg(pos) =>
-      println("resync:ShutterBehindUpdate pos="+pos+" data=("+data.resyncPos+","+data.targetPos+")")
+      logger.debug("resync:ShutterBehindUpdate pos="+pos+" data=("+data.resyncPos+","+data.targetPos+")")
       if(positionReached(pos, data)) { // we reached resync position
-        println("resync:positionReached")
+        logger.debug("resync:positionReached")
         val behindPos = fromActive2Behind(data.targetPos, calibration)
         eventPublisher.postCommand(itemBehind, new PercentType(behindPos))
         context.become(idle(IdleData(data.targetPos)), true)
       } else {
         // we reached an unexpected position
-        println("resync:unexpected pos")
+        logger.debug("resync:unexpected pos")
         val shutterPos = fromBehind2Active(pos, calibration)
         context.become(idle(IdleData(shutterPos)), true)
         eventPublisher.postUpdate(item, new PercentType(shutterPos))
@@ -106,7 +106,7 @@ class ShutterActor(
   
   private def isResyncRequired(currentPos:Int, targetPos:Int):Boolean = {
     logger.warn(s"isResynchRequired(currentPos=${currentPos},targetPos=${targetPos}\n)")
-    (targetPos<10 || targetPos>90)
+    (targetPos<10 || targetPos>90) && targetPos !=0 && targetPos != 100
   }
   
   private def getResyncPos(position:Int):Int = {

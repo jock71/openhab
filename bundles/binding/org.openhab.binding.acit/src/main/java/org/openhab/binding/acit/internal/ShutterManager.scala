@@ -61,6 +61,7 @@ object ShutterManager {
   
   def forwardItemBehindStatus(actor:ActorRef, newState:State) = newState match {
     case pos:DecimalType => actor ! ShutterBehindUpdatePosMsg(pos.intValue())
+    case default => // ignore anything else (we are assuming position is always fired
   }
 
   def forwardItemStatus(actor:ActorRef, newState:State) = newState match {
