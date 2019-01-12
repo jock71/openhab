@@ -107,8 +107,12 @@ class ShutterActor(
   
   
   private def isResyncRequired(currentPos:Int, targetPos:Int):Boolean = {
-    logger.debug(s"isResynchRequired(currentPos=${currentPos},targetPos=${targetPos}\n)")
-    /*(targetPos<10 || targetPos>90) && */ targetPos !=0 && targetPos != 100
+    val isRequired = targetPos !=0 && targetPos != 100 && 
+       currentPos != targetPos && 
+       getResyncPos(currentPos, targetPos) != currentPos
+    logger.warn(s"isResynchRequired(currentPos=${currentPos},targetPos=${targetPos}) =>${isRequired}\n)")
+    /*(targetPos<10 || targetPos>90) && */ 
+    isRequired
   }
   
   private def getResyncPos(currentPos:Int, targetPos:Int):Int = {
