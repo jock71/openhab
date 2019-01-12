@@ -26,7 +26,7 @@ object ShutterBehaviour {
       (currLeft, el) => if(el._1<activePos && el._1>currLeft._1) el else currLeft
     })
     val (rightAct, rightRaw) = calibration.foldLeft((100.asInstanceOf[Double],100.asInstanceOf[Double]))({
-      (currRight, el) => if(el._1>activePos && el._1<currRight._1) el else currRight    
+      (currRight, el) => if(el._1>=activePos && el._1<currRight._1) el else currRight    
     })
     val rawVal:Double = leftRaw + (activePos-leftAct)*(rightRaw-leftRaw)/(rightAct-leftAct)
     rawVal.asInstanceOf[Int]

@@ -26,11 +26,13 @@ class ShutterActor(
   def handleMoveTo(data:IdleData):PartialFunction[Any,Unit] = {
     case ShutterMoveToMsg(targetPos:Int) =>
       if(isResyncRequired(data.currentPos, targetPos)) {
-        val resyncPos = getResyncPos(targetPos)
+        val resyncPos = getResyncPos(data.currentPos, targetPos)
+        logger.warn(s"moveTo targetPos=$targetPos resync required. Move to resyncPos=$resyncPos")
         eventPublisher.postCommand(itemBehind, new PercentType(resyncPos))
         context.become(resync(ResyncData(data.currentPos, resyncPos, targetPos)), true)
       } else {
         val behindPos = fromActive2Behind(targetPos, calibration)
+        logger.warn(s"moveTo targetPos=$targetPos tell to shutterBehind to go behindPos=$behindPos")
         eventPublisher.postCommand(itemBehind, new PercentType(behindPos))
         context.become(idle(IdleData(targetPos)), true)
       }     
@@ -73,10 +75,10 @@ class ShutterActor(
    
   def resync(data:ResyncData):PartialFunction[Any,Unit] = {
     case ShutterBehindUpdatePosMsg(pos) =>
-      logger.debug("resync:ShutterBehindUpdate pos="+pos+" data=("+data.resyncPos+","+data.targetPos+")")
+      logger.warn(s"resync:ShutterBehindUpdate pos=$pos data=(${data.resyncPos},${data.targetPos}")
       if(positionReached(pos, data)) { // we reached resync position
-        logger.debug("resync:positionReached")
         val behindPos = fromActive2Behind(data.targetPos, calibration)
+        logger.warn(s"resync:positionReached currBehindPos=$pos targetBehindPos=$behindPos ")
         eventPublisher.postCommand(itemBehind, new PercentType(behindPos))
         context.become(idle(IdleData(data.targetPos)), true)
       } else {
@@ -105,14 +107,16 @@ class ShutterActor(
   
   
   private def isResyncRequired(currentPos:Int, targetPos:Int):Boolean = {
-    logger.warn(s"isResynchRequired(currentPos=${currentPos},targetPos=${targetPos}\n)")
-    (targetPos<10 || targetPos>90) && targetPos !=0 && targetPos != 100
+    logger.debug(s"isResynchRequired(currentPos=${currentPos},targetPos=${targetPos}\n)")
+    /*(targetPos<10 || targetPos>90) && */ targetPos !=0 && targetPos != 100
   }
   
-  private def getResyncPos(position:Int):Int = {
-    if(position<10) 0 
-    else if(position>90) 100
-    else position
+  private def getResyncPos(currentPos:Int, targetPos:Int):Int = {
+    val resyncPos = if(currentPos + targetPos > 100) 100 else 0
+    //if(targetPosition<10) 0 
+    //else if(targetPosition>90) 100
+    //else targetPosition
+    resyncPos
   }
   
   private def positionReached(position:Int, data:ResyncData):Boolean = (position==data.resyncPos) 
